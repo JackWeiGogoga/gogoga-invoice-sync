@@ -1,0 +1,4 @@
+node_modules/
+# 摸底输出与样本含个人发票信息，永不入库
+survey-output/
+dist/

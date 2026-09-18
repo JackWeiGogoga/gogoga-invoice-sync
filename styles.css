@@ -1,0 +1,287 @@
+/* Invoice Sync 侧边栏 */
+
+.invoice-sync-view {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.invoice-sync-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.invoice-sync-title {
+  margin: 0;
+  font-size: var(--font-ui-large);
+  font-weight: 600;
+}
+
+.invoice-sync-header-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.invoice-sync-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.invoice-sync-icon-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.invoice-sync-primary {
+  width: 100%;
+  padding: 8px 12px;
+  font-weight: 600;
+  color: var(--text-on-accent);
+  background: var(--interactive-accent);
+  border: none;
+  border-radius: var(--radius-s);
+  cursor: pointer;
+}
+
+.invoice-sync-primary:hover:not(:disabled) {
+  background: var(--interactive-accent-hover);
+}
+
+.invoice-sync-primary:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.invoice-sync-status {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  min-height: 18px;
+  overflow-wrap: anywhere;
+}
+
+.invoice-sync-status.is-error {
+  color: var(--text-error);
+}
+
+.invoice-sync-bar-wrap {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--background-modifier-border);
+  overflow: hidden;
+}
+
+.invoice-sync-bar {
+  height: 100%;
+  width: 0;
+  background: var(--interactive-accent);
+  transition: width 0.2s ease;
+}
+
+.invoice-sync-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.invoice-sync-muted {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+
+.invoice-sync-empty {
+  text-align: center;
+  padding: 12px 0;
+}
+
+/* 未配置提示 */
+.invoice-sync-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 1px dashed var(--background-modifier-border);
+  border-radius: var(--radius-m);
+}
+
+.invoice-sync-setup-title {
+  font-weight: 600;
+}
+
+.invoice-sync-setup button {
+  align-self: flex-start;
+}
+
+/* 概况 */
+.invoice-sync-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.invoice-sync-tile {
+  padding: 8px 6px 8px 8px;
+  border-radius: var(--radius-m);
+  background: var(--background-secondary);
+  min-width: 0;
+}
+
+.invoice-sync-tile.is-accent {
+  background: var(--background-modifier-hover);
+  box-shadow: inset 2px 0 0 var(--interactive-accent);
+}
+
+.invoice-sync-tile-label {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+
+.invoice-sync-tile-value {
+  font-size: var(--font-ui-small);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.invoice-sync-tile-sub {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+}
+
+/* 分区 */
+.invoice-sync-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.invoice-sync-section-title {
+  font-size: var(--font-ui-smaller);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-bottom: 2px;
+}
+
+/* 待处理 */
+.invoice-sync-queue-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+}
+
+.invoice-sync-queue-top {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.invoice-sync-reason {
+  flex: none;
+  font-size: var(--font-ui-smaller);
+  padding: 0 6px;
+  border-radius: var(--radius-s);
+  color: var(--text-warning);
+  background: rgba(var(--color-orange-rgb), 0.12);
+}
+
+.invoice-sync-reason.reason-buyer-mismatch,
+.invoice-sync-reason.reason-amount-mismatch {
+  color: var(--text-error);
+  background: rgba(var(--color-red-rgb), 0.12);
+}
+
+.invoice-sync-queue-subject {
+  font-size: var(--font-ui-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.invoice-sync-queue-detail {
+  overflow-wrap: anywhere;
+}
+
+.invoice-sync-queue-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.invoice-sync-small-btn {
+  font-size: var(--font-ui-smaller);
+  padding: 2px 8px;
+  height: auto;
+}
+
+/* 最近 */
+.invoice-sync-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  margin: 0 -8px;
+  border-radius: var(--radius-s);
+  cursor: pointer;
+}
+
+.invoice-sync-row:hover {
+  background: var(--background-modifier-hover);
+}
+
+.invoice-sync-row-main {
+  min-width: 0;
+}
+
+.invoice-sync-row-title {
+  font-size: var(--font-ui-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.invoice-sync-row-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex: none;
+}
+
+.invoice-sync-amount {
+  font-size: var(--font-ui-small);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.invoice-sync-chip {
+  font-size: var(--font-ui-smaller);
+  padding: 0 6px;
+  border-radius: var(--radius-s);
+  color: var(--text-muted);
+  background: var(--background-modifier-border);
+}
+
+.invoice-sync-chip.is-pending {
+  color: var(--text-accent);
+  background: hsla(var(--accent-h), var(--accent-s), var(--accent-l), 0.12);
+}
