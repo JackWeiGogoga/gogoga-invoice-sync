@@ -1,8 +1,8 @@
 /**
  * 首次同步时生成的 Bases 总表。只在不存在时创建，之后你怎么改都不覆盖。
  */
-export function baseFileContent(root: string, pendingStatus: string): string {
-  const cols = ["file.name", "note.issued", "note.seller", "note.category", "note.total", "note.tax", "note.status"];
+export function baseFileContent(root: string): string {
+  const cols = ["file.name", "note.reimbursed", "note.issued", "note.seller", "note.category", "note.total", "note.tax"];
   const order = cols.map((c) => `      - ${c}`).join("\n");
   return `filters:
   and:
@@ -19,8 +19,8 @@ properties:
     displayName: 价税合计
   note.tax:
     displayName: 税额
-  note.status:
-    displayName: 报销状态
+  note.reimbursed:
+    displayName: 已报销
   note.buyer:
     displayName: 购买方
   note.invoice_no:
@@ -39,10 +39,10 @@ ${order}
       note.total: Sum
       note.tax: Sum
   - type: table
-    name: ${pendingStatus}
+    name: 未报销
     filters:
       and:
-        - 'status == "${pendingStatus}"'
+        - 'reimbursed != true'
     order:
 ${order}
     sort:

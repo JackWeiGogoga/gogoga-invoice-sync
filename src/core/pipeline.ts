@@ -5,7 +5,7 @@
  */
 import { simpleParser } from "mailparser";
 import type { FileBlob, InvoiceBundle } from "../invoice/model";
-import { expandFiles, groupInvoices } from "../invoice/files";
+import { expandFiles, groupInvoices, groupPdfInvoices } from "../invoice/files";
 import { downloadFromLink, type Fetcher } from "../invoice/download";
 import { candidateLinks, htmlToText } from "../mail/links";
 
@@ -95,6 +95,12 @@ export async function processMessage(raw: Uint8Array, deps: PipelineDeps = {}): 
   );
   let grouped = groupInvoices(attached, "attachment");
   collect(outcome, grouped);
+  let pdfErrors: string[] = [];
+  if (outcome.bundles.length === 0) {
+    const pdfGrouped = await groupPdfInvoices(attached, "attachment");
+    pdfErrors = pdfGrouped.errors;
+    collectPdf(outcome, pdfGrouped);
+  }
 
   // 2. 附件里没有 XML → 跟随下载链接
   const links = candidateLinks(html, text);
@@ -105,12 +111,21 @@ export async function processMessage(raw: Uint8Array, deps: PipelineDeps = {}): 
         const files = expandFiles(await downloadFromLink(link.url, deps.fetcher));
         // 附件里已有的 PDF/OFD 也一起参与归组
         grouped = groupInvoices([...files, ...attached.filter((f) => f.kind !== "xml")], "link");
+        if (grouped.bundles.length === 0) {
+          const pdfGrouped = await groupPdfInvoices([...files, ...attached], "link");
+          pdfErrors = pdfGrouped.errors;
+          if (pdfGrouped.bundles.length > 0) {
+            outcome.problems = outcome.problems.filter((p) => p.reason !== "xml-invalid");
+            collectPdf(outcome, pdfGrouped);
+            break;
+          }
+        }
         if (grouped.bundles.length > 0) {
           outcome.problems = outcome.problems.filter((p) => p.reason !== "xml-invalid");
           collect(outcome, grouped);
           break;
         }
-        errors.push("下载到的文件里没有发票 XML");
+        errors.push(pdfErrors[0] ?? "下载到的文件里没有可解析的发票 XML/PDF");
       } catch (err) {
         errors.push(err instanceof Error ? err.message : String(err));
       }
@@ -126,7 +141,7 @@ export async function processMessage(raw: Uint8Array, deps: PipelineDeps = {}): 
     if (docs.length > 0) {
       outcome.problems.push({
         reason: "no-xml",
-        detail: `附件只有 ${docs.map((d) => d.kind.toUpperCase()).join("、")}，没有可解析的 XML`,
+        detail: pdfErrors[0] ?? `附件只有 ${docs.map((d) => d.kind.toUpperCase()).join("、")}，没有可解析的 XML；PDF 需要带可复制的文字层`,
         link: links[0]?.url,
       });
     } else if (links.length > 0) {
@@ -136,6 +151,16 @@ export async function processMessage(raw: Uint8Array, deps: PipelineDeps = {}): 
     }
   }
   return outcome;
+}
+
+function collectPdf(outcome: MailOutcome, grouped: ReturnType<typeof groupInvoices>): void {
+  outcome.bundles.push(...grouped.bundles);
+  if (grouped.orphans.length > 0 && grouped.bundles.length > 0) {
+    outcome.problems.push({
+      reason: "unmatched-files",
+      detail: `有 ${grouped.orphans.length} 个文件无法归入发票：${grouped.orphans.map((file) => file.name).join("、")}`,
+    });
+  }
 }
 
 function collect(outcome: MailOutcome, grouped: ReturnType<typeof groupInvoices>): void {

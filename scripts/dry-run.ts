@@ -29,8 +29,8 @@ for (const f of files) {
     const dup = seen.has(inv.number) ? " 重复" : "";
     seen.add(inv.number);
     const amount = checkAmounts(inv) ? "金额✗" : "金额✓";
-    const filesHave = ["xml", b.pdf ? "pdf" : "", b.ofd ? "ofd" : "", b.extras.length ? `+${b.extras.length}附件` : ""].filter(Boolean).join("/");
-    const note = buildNote(inv, pathsFor(b, DEFAULT_SETTINGS), { initialStatus: "未报销", embedPdf: true });
+    const filesHave = [b.xml ? "xml" : "", b.pdf ? "pdf" : "", b.ofd ? "ofd" : "", b.extras.length ? `+${b.extras.length}附件` : ""].filter(Boolean).join("/");
+    const note = buildNote(inv, pathsFor(b, DEFAULT_SETTINGS), { embedPdf: true });
     console.log(
       `${tag}  via=${b.via} ${inv.kind}${inv.red ? "(红)" : ""} ${inv.category} ${inv.issued} ${amount} 号码${inv.number.length}位 明细${inv.items.length}行 税号${[inv.seller.taxId, inv.buyer.taxId].filter(Boolean).length}个 文件=${filesHave} 笔记${note.length}字${dup}`,
     );

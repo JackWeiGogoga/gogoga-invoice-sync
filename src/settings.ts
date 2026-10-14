@@ -29,8 +29,6 @@ export interface InvoiceSyncSettings {
   importFolder: string;
   /** 在笔记里内嵌 PDF 预览。 */
   embedPdf: boolean;
-  /** 新发票的初始报销状态。 */
-  initialStatus: string;
 
   /** 你的抬头（名称或税号，每行一个）；设置后，抬头不符的发票会进待处理。 */
   myBuyers: string[];
@@ -59,7 +57,6 @@ export const DEFAULT_SETTINGS: InvoiceSyncSettings = {
   filesFolder: "attachments/invoices",
   importFolder: "invoices/import",
   embedPdf: true,
-  initialStatus: "未报销",
 
   myBuyers: [],
 
@@ -69,6 +66,7 @@ export const DEFAULT_SETTINGS: InvoiceSyncSettings = {
 };
 
 export function mergeSettings(saved: unknown): InvoiceSyncSettings {
-  const s = (saved ?? {}) as Partial<InvoiceSyncSettings>;
+  // initialStatus 是旧版文本状态设置；新版固定使用 reimbursed: false。
+  const { initialStatus: _legacy, ...s } = (saved ?? {}) as Partial<InvoiceSyncSettings> & { initialStatus?: unknown };
   return { ...DEFAULT_SETTINGS, ...s };
 }

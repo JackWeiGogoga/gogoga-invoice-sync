@@ -2,7 +2,7 @@
  * 发票笔记：路径与内容。
  *
  * 沿用 fav-sync 的约定：机器区在 %% invoice-sync:start/end %% 之间，
- * 标记之外（包括 status 等你自己改的字段）永不覆盖。
+ * 标记之外（包括 reimbursed 等你自己改的字段）永不覆盖。
  * 发票内容一经开出就不会变，所以 v0.1 只新建、不改写已有笔记。
  */
 import type { Invoice, InvoiceBundle, InvoiceItem } from "../invoice/model";
@@ -41,7 +41,7 @@ export interface NotePaths {
   note: string;
   filesDir: string;
   /** 各原始文件的目标路径。 */
-  xml: string;
+  xml?: string;
   pdf?: string;
   ofd?: string;
   extras: string[];
@@ -59,7 +59,7 @@ export function pathsFor(bundle: InvoiceBundle, s: InvoiceSyncSettings): NotePat
     dir,
     note: joinPath(dir, `${base}.md`),
     filesDir,
-    xml: file("xml"),
+    xml: bundle.xml ? file("xml") : undefined,
     pdf: bundle.pdf ? file("pdf") : undefined,
     ofd: bundle.ofd ? file("ofd") : undefined,
     extras: bundle.extras.map((f, i) => file(f.kind === "other" ? "bin" : f.kind, `-附件${i + 1}`)),
@@ -90,7 +90,6 @@ export interface NoteFlags {
   amountIssue?: string | null;
   source?: string;
   received?: string;
-  initialStatus: string;
   embedPdf: boolean;
 }
 
@@ -117,8 +116,8 @@ function frontmatter(inv: Invoice, p: NotePaths, flags: NoteFlags): string {
   else if (flags.amountIssue) lines.push(`check: ${yamlString("金额异常")}`);
   lines.push(`files: ${yamlList(files)}`);
   lines.push(`tags: ${yamlList(["invoice", `invoice/${inv.category}`])}`);
-  // 报销状态归你管：只在新建时写一次
-  lines.push(`status: ${yamlString(flags.initialStatus)}`);
+  // 原生 Checkbox：未勾选表示未报销，只在新建时写一次。
+  lines.push("reimbursed: false");
   lines.push("---");
   return lines.join("\n");
 }
@@ -175,7 +174,7 @@ function machineBody(inv: Invoice, p: NotePaths, flags: NoteFlags): string {
   const links = [
     p.pdf ? `[[${p.pdf}|PDF]]` : "",
     p.ofd ? `[[${p.ofd}|OFD]]` : "",
-    `[[${p.xml}|XML]]`,
+    p.xml ? `[[${p.xml}|XML]]` : "",
     ...p.extras.map((x, i) => `[[${x}|附件${i + 1}]]`),
   ].filter(Boolean);
   out.push(`原始文件：${links.join(" · ")}`);

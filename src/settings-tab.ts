@@ -151,7 +151,7 @@ export class InvoiceSyncSettingTab extends PluginSettingTab {
     // ---- 存放 ----
     new Setting(containerEl).setName("笔记与文件").setHeading();
 
-    const text = (name: string, desc: string, key: "rootFolder" | "dirTemplate" | "fileTemplate" | "filesFolder" | "importFolder" | "initialStatus") =>
+    const text = (name: string, desc: string, key: "rootFolder" | "dirTemplate" | "fileTemplate" | "filesFolder" | "importFolder") =>
       new Setting(containerEl)
         .setName(name)
         .setDesc(desc)
@@ -166,7 +166,6 @@ export class InvoiceSyncSettingTab extends PluginSettingTab {
     text("文件名模板", "可用 {date} {seller} {total} {number} {category} {kind}。", "fileTemplate");
     text("原始文件目录", "PDF / OFD / XML 按年份存在这里，以发票号码命名。", "filesFolder");
     text("导入文件夹", "手动下载的 XML / ZIP / PDF / OFD 丢进来，同步时自动处理。", "importFolder");
-    text("初始报销状态", "新发票的 status 字段；之后由你自己改。", "initialStatus");
 
     new Setting(containerEl)
       .setName("内嵌 PDF 预览")

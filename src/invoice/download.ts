@@ -119,6 +119,28 @@ function fileUrlsInParams(url: string): FileUrl[] {
   return out;
 }
 
+/**
+ * 百望的全电票落地页是 Vue 单页应用：初始 HTML 只有脚本标签，真正的下载地址
+ * 要等浏览器执行 JS 后，才会根据 param 拼出 downloadFormat 请求。因此 Node 侧
+ * 不能只找静态链接，需要复现页面公开的下载动作。
+ */
+function baiwangFileUrls(url: string): FileUrl[] {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    return [];
+  }
+  if (u.hostname !== "pis.baiwang.com" || u.pathname !== "/smkp-vue/previewInvoiceAllEle") return [];
+  const param = u.searchParams.get("param") ?? "";
+  // 真实页面使用十六进制密文；限制格式，避免把任意输入带入平台接口。
+  if (!/^[0-9a-f]{32,512}$/i.test(param)) return [];
+  return ["XML", "PDF", "OFD"].map((format) => ({
+    url: `${u.origin}/bwmg/mix/bw/downloadFormat?param=${encodeURIComponent(param)}&formatType=${format}`,
+    rank: rankOf(format),
+  }));
+}
+
 /** 落地页 HTML 里指向文件的链接。 */
 function fileUrlsInHtml(html: string, base: string): FileUrl[] {
   const out: FileUrl[] = [];
@@ -200,7 +222,7 @@ export async function downloadFromLink(url: string, fetcher: Fetcher = nodeFetch
   }
 
   // 沿途地址参数里的文件地址 + 落地页里的文件链接
-  const candidates = trail.flatMap(fileUrlsInParams);
+  const candidates = trail.flatMap((u) => [...fileUrlsInParams(u), ...baiwangFileUrls(u)]);
   const ctype = header(res, "content-type");
   if (res.status === 200 && /html/i.test(ctype)) {
     candidates.push(...fileUrlsInHtml(new TextDecoder("utf-8").decode(res.body), finalUrl));

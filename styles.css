@@ -276,9 +276,19 @@
 .invoice-sync-chip {
   font-size: var(--font-ui-smaller);
   padding: 0 6px;
+  height: auto;
+  min-height: 0;
   border-radius: var(--radius-s);
+  border: 0;
+  box-shadow: none;
   color: var(--text-muted);
   background: var(--background-modifier-border);
+  cursor: pointer;
+}
+
+.invoice-sync-chip:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-border-hover);
 }
 
 .invoice-sync-chip.is-pending {

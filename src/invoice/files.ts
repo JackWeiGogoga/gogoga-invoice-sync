@@ -6,6 +6,7 @@
 import { unzipSync } from "fflate";
 import type { FileBlob, FileKind, InvoiceBundle } from "./model";
 import { InvoiceParseError, parseEInvoice } from "./einvoice";
+import { parsePdfInvoice } from "./pdf";
 
 const MAX_DEPTH = 3;
 /** 随发票附带的非发票文件。 */
@@ -123,6 +124,37 @@ export function groupInvoices(files: FileBlob[], via: InvoiceBundle["via"]): Gro
     if (target) target[slot] = f;
     else if (only) only.extras.push(f);
     else orphans.push(f);
+  }
+  return { bundles, orphans, errors };
+}
+
+/** XML 缺失时，尝试从带文字层的 PDF 恢复结构化发票。 */
+export async function groupPdfInvoices(files: FileBlob[], via: InvoiceBundle["via"]): Promise<Grouped> {
+  const bundles: InvoiceBundle[] = [];
+  const errors: string[] = [];
+  const failed: FileBlob[] = [];
+  for (const file of files.filter((entry) => entry.kind === "pdf")) {
+    try {
+      const invoice = await parsePdfInvoice(file.data);
+      if (bundles.some((bundle) => bundle.invoice.number === invoice.number)) continue;
+      bundles.push({ invoice, pdf: file, extras: [], via });
+    } catch (error) {
+      failed.push(file);
+      errors.push(`${file.name}：${error instanceof InvoiceParseError ? error.message : String(error)}`);
+    }
+  }
+
+  const orphans: FileBlob[] = [];
+  for (const file of files.filter((entry) => entry.kind === "ofd")) {
+    const byName = bundles.find((bundle) => file.name.includes(bundle.invoice.number) && !bundle.ofd);
+    const only = bundles.length === 1 ? bundles[0] : undefined;
+    const target = byName ?? (only && !only.ofd ? only : undefined);
+    if (target) target.ofd = file;
+    else orphans.push(file);
+  }
+  for (const file of failed) {
+    if (bundles.length === 1 && SUPPLEMENT.test(file.name)) bundles[0]!.extras.push(file);
+    else orphans.push(file);
   }
   return { bundles, orphans, errors };
 }

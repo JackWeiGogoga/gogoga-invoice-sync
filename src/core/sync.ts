@@ -8,12 +8,13 @@ import type { IndexStore, QueueItem } from "./index-store";
 import { peekMessageId, processMessage, type MailOutcome } from "./pipeline";
 import { buildNote, pathsFor } from "./note-builder";
 import { checkAmounts } from "../invoice/einvoice";
-import { expandFiles, groupInvoices } from "../invoice/files";
+import { expandFiles, groupInvoices, groupPdfInvoices } from "../invoice/files";
 import type { FileBlob, Invoice, InvoiceBundle } from "../invoice/model";
 import { nodeFetcher, type Fetcher } from "../invoice/download";
 import { fetchNew, listFolders, withImap } from "../mail/imap";
 import { baseFileContent } from "./base-file";
 import { joinPath } from "./util";
+import { isReimbursed } from "./status";
 
 export interface SyncProgress {
   message: string;
@@ -242,7 +243,6 @@ export class SyncService {
         amountIssue,
         source: meta.source,
         received: meta.received,
-        initialStatus: s.initialStatus,
         embedPdf: s.embedPdf,
       }),
     );
@@ -277,7 +277,8 @@ export class SyncService {
         leaves.push(leaf);
       }
     }
-    const grouped = groupInvoices(leaves, "import");
+    let grouped = groupInvoices(leaves, "import");
+    if (grouped.bundles.length === 0) grouped = await groupPdfInvoices(leaves, "import");
     const used = new Set<FileBlob>();
     for (const b of grouped.bundles) {
       await this.writeInvoice(b, { subject: `导入：${b.invoice.seller.name}`, source: "手动导入" });
@@ -340,7 +341,7 @@ export class SyncService {
     await this.ensureFolder(s.importFolder);
     const basePath = joinPath(s.rootFolder, "发票总表.base");
     if (!this.app.vault.getAbstractFileByPath(basePath)) {
-      await this.app.vault.create(basePath, baseFileContent(s.rootFolder, s.initialStatus));
+      await this.app.vault.create(basePath, baseFileContent(s.rootFolder));
     }
   }
 
@@ -348,7 +349,7 @@ export class SyncService {
     return joinPath(this.getSettings().rootFolder, "发票总表.base");
   }
 
-  /** 侧边栏用的统计：从 frontmatter 现算，你手动改了 status 也能立刻反映。 */
+  /** 侧边栏用的统计：从 frontmatter 现算，勾选「已报销」后立刻反映。 */
   stats(): InvoiceStats {
     const s = this.getSettings();
     const month = new Date().toISOString().slice(0, 7);
@@ -357,13 +358,13 @@ export class SyncService {
     for (const f of this.app.vault.getMarkdownFiles()) {
       if (!f.path.startsWith(prefix)) continue;
       const fm = this.app.metadataCache.getFileCache(f)?.frontmatter as
-        | { type?: string; total?: number; status?: string; month?: string }
+        | { type?: string; total?: number; reimbursed?: boolean; status?: string; month?: string }
         | undefined;
       if (fm?.type !== "invoice") continue;
       const total = Number(fm.total) || 0;
       out.count += 1;
       out.total += total;
-      if (fm.status === s.initialStatus) {
+      if (!isReimbursed(fm.reimbursed, fm.status)) {
         out.unreimbursed += 1;
         out.unreimbursedTotal += total;
       }
@@ -376,13 +377,13 @@ export class SyncService {
   }
 
   /** 最近的几张发票（按开票日期倒序）。 */
-  recent(limit = 6): Array<{ path: string; seller: string; total: number; issued: string; status?: string }> {
+  recent(limit = 6): Array<{ path: string; seller: string; total: number; issued: string; reimbursed: boolean }> {
     const prefix = `${normalizePath(this.getSettings().rootFolder)}/`;
-    const rows: Array<{ path: string; seller: string; total: number; issued: string; status?: string; received: string }> = [];
+    const rows: Array<{ path: string; seller: string; total: number; issued: string; reimbursed: boolean; received: string }> = [];
     for (const f of this.app.vault.getMarkdownFiles()) {
       if (!f.path.startsWith(prefix)) continue;
       const fm = this.app.metadataCache.getFileCache(f)?.frontmatter as
-        | { type?: string; seller?: string; total?: number; issued?: string; status?: string; received?: string }
+        | { type?: string; seller?: string; total?: number; issued?: string; reimbursed?: boolean; status?: string; received?: string }
         | undefined;
       if (fm?.type !== "invoice") continue;
       rows.push({
@@ -390,7 +391,7 @@ export class SyncService {
         seller: fm.seller ?? f.basename,
         total: Number(fm.total) || 0,
         issued: String(fm.issued ?? ""),
-        status: fm.status,
+        reimbursed: isReimbursed(fm.reimbursed, fm.status),
         received: String(fm.received ?? ""),
       });
     }

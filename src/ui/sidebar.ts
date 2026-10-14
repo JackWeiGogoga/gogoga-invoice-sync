@@ -7,11 +7,12 @@ import type InvoiceSyncPlugin from "../main";
 import type { QueueItem } from "../core/index-store";
 import type { ProblemReason } from "../core/pipeline";
 import type { SyncProgress, SyncReport } from "../core/sync";
+import { reimbursementLabel } from "../core/status";
 
 export const VIEW_TYPE_INVOICE_SYNC = "invoice-sync-view";
 
 const REASON_LABEL: Record<ProblemReason, string> = {
-  "no-xml": "缺少 XML",
+  "no-xml": "文件无法解析",
   "link-failed": "链接下载失败",
   "xml-invalid": "XML 无法解析",
   "unmatched-files": "文件对不上",
@@ -125,7 +126,7 @@ export class InvoiceSyncView extends ItemView {
       t.createDiv({ text: `¥${Math.round(total).toLocaleString("zh-CN")}`, cls: "invoice-sync-tile-value", attr: { title: yuan(total) } });
       t.createDiv({ text: `${count} 张`, cls: "invoice-sync-tile-sub" });
     };
-    tile(this.plugin.settings.initialStatus, st.unreimbursed, st.unreimbursedTotal, st.unreimbursed > 0 ? "is-accent" : "");
+    tile("未报销", st.unreimbursed, st.unreimbursedTotal, st.unreimbursed > 0 ? "is-accent" : "");
     tile("本月", st.thisMonth, st.thisMonthTotal);
     tile("全部", st.count, st.total);
 
@@ -149,12 +150,19 @@ export class InvoiceSyncView extends ItemView {
         main.createDiv({ text: r.issued, cls: "invoice-sync-muted" });
         const right = row.createDiv({ cls: "invoice-sync-row-right" });
         right.createDiv({ text: yuan(r.total), cls: "invoice-sync-amount" });
-        if (r.status) {
-          right.createDiv({
-            text: r.status,
-            cls: `invoice-sync-chip${r.status === this.plugin.settings.initialStatus ? " is-pending" : ""}`,
-          });
-        }
+        const label = reimbursementLabel(r.reimbursed);
+        const status = right.createEl("button", {
+          text: label,
+          cls: `invoice-sync-chip${r.reimbursed ? "" : " is-pending"}`,
+          attr: { title: "点击切换报销状态", "aria-label": `${r.seller}：${label}，点击切换` },
+        });
+        status.onclick = async (event) => {
+          event.stopPropagation();
+          status.disabled = true;
+          const next = await this.plugin.toggleInvoiceStatus(r.path);
+          if (next) new Notice(`已标记为${next}`);
+          this.renderBody();
+        };
         row.onclick = () => void this.app.workspace.openLinkText(r.path, "", false);
       }
     } else if (this.plugin.sync.isConfigured()) {

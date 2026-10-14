@@ -44,7 +44,8 @@ export interface InvoiceItem {
 /** 一张发票连同它的原始文件。 */
 export interface InvoiceBundle {
   invoice: Invoice;
-  xml: FileBlob;
+  /** XML 优先；只有 PDF 的转发邮件允许没有 XML。 */
+  xml?: FileBlob;
   pdf?: FileBlob;
   ofd?: FileBlob;
   /** 同一封邮件里的其它随附文件，如滴滴的行程单 PDF。 */

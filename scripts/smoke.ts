@@ -8,6 +8,7 @@ import { zipSync, strToU8 } from "fflate";
 import MailComposer from "nodemailer/lib/mail-composer";
 import { parseXml, text } from "../src/invoice/xml";
 import { categoryOf, checkAmounts, parseEInvoice } from "../src/invoice/einvoice";
+import { parsePdfInvoice } from "../src/invoice/pdf";
 import { expandFiles, groupInvoices, sniff } from "../src/invoice/files";
 import { downloadFromLink, nodeFetcher, DownloadError } from "../src/invoice/download";
 import { candidateLinks, htmlToText } from "../src/mail/links";
@@ -15,6 +16,7 @@ import { peekMessageId, processMessage } from "../src/core/pipeline";
 import { buildNote, pathsFor } from "../src/core/note-builder";
 import { baseFileContent } from "../src/core/base-file";
 import { DEFAULT_SETTINGS } from "../src/settings";
+import { isReimbursed, reimbursementLabel, toggleReimbursed } from "../src/core/status";
 
 let pass = 0;
 let fail = 0;
@@ -79,6 +81,15 @@ function compose(opts: Record<string, unknown>): Promise<Uint8Array> {
   check("XML 实体解码", text(root ?? undefined, "Item") === "A & B");
   check("XML CDATA", text(root ?? undefined, "C") === "<raw>");
   check("XML 属性里的 > 不截断", root?.children.length === 3, root?.children.map((c) => c.name));
+}
+
+// ---------- 报销状态 ----------
+{
+  check("状态：未勾选 → 已报销", toggleReimbursed(false) === true);
+  check("状态：已勾选 → 未报销", toggleReimbursed(true) === false);
+  check("状态：兼容旧的已报销文本", isReimbursed(undefined, "已报销") === true);
+  check("状态：布尔值优先于旧文本", isReimbursed(false, "已报销") === false);
+  check("状态：界面文案", reimbursementLabel(true) === "已报销" && reimbursementLabel(false) === "未报销");
 }
 
 // ---------- 数电票解析 ----------
@@ -156,6 +167,23 @@ function compose(opts: Record<string, unknown>): Promise<Uint8Array> {
   check("同一号码去重", groupInvoices(expandFiles([{ name: "a.xml", data: xmlA }, { name: "b.xml", data: xmlA }]), "import").bundles.length === 1);
 }
 
+// ---------- 只有 PDF 的发票 ----------
+{
+  const workerRoot = globalThis as typeof globalThis & { pdfjsWorker?: unknown };
+  const hadWorker = Object.prototype.hasOwnProperty.call(workerRoot, "pdfjsWorker");
+  const previousWorker = workerRoot.pdfjsWorker;
+  const inv = await parsePdfInvoice(PDF);
+  check("PDF：号码", inv.number === "26310000000000000001", inv.number);
+  check("PDF：日期", inv.issued === "2026-09-01", inv.issued);
+  check("PDF：买卖方", inv.buyer.name === "测试个人" && inv.seller.name === "测试餐饮有限公司", [inv.buyer.name, inv.seller.name]);
+  check("PDF：金额", inv.amount === 94.34 && inv.tax === 5.66 && inv.total === 100, [inv.amount, inv.tax, inv.total]);
+  check("PDF：明细和类别", inv.items[0]?.name === "*餐饮服务*餐费" && inv.category === "餐饮", inv.items);
+  check(
+    "PDF：解析后恢复全局 worker，不干扰 Obsidian 查看器",
+    hadWorker ? workerRoot.pdfjsWorker === previousWorker : !Object.prototype.hasOwnProperty.call(workerRoot, "pdfjsWorker"),
+  );
+}
+
 // ---------- 链接提取 ----------
 {
   const html =
@@ -181,6 +209,15 @@ function startServer(): Promise<{ server: Server; base: string }> {
       } else if (url.pathname === "/landing") {
         res.writeHead(200, { "Content-Type": "text/html", "Set-Cookie": "session=ok; Path=/" });
         res.end("<html><body>发票下载</body></html>");
+      } else if (url.pathname === "/bw-page") {
+        res.writeHead(200, { "Content-Type": "text/html" });
+        res.end('<html><body><div id="app"></div><script src="app.js"></script></body></html>');
+      } else if (url.pathname === "/bwmg/mix/bw/downloadFormat") {
+        const format = url.searchParams.get("formatType");
+        const body = format === "XML" ? einvoiceXml({ no: NO_A }) : format === "PDF" ? PDF : ofdFile;
+        const ext = format?.toLowerCase() ?? "bin";
+        res.writeHead(200, { "Content-Type": "application/octet-stream", "Content-Disposition": `attachment;fileName=dzfp_${NO_A}.${ext}` });
+        res.end(Buffer.from(body));
       } else if (url.pathname.startsWith("/f/")) {
         // 文件接口要求带着落地页种下的 Cookie
         if (!hasCookie) {
@@ -218,6 +255,19 @@ try {
   const direct = await downloadFromLink(`${base}/direct.pdf`, nodeFetcher);
   check("链接：直接返回 PDF", direct.length === 1 && sniff(direct[0]!.data, "") === "pdf");
 
+  const baiwangParam = "45E162425C41320DD4794A2D16CC5A06";
+  const bwFetcher = (url: string, headers: Record<string, string>) => {
+    const u = new URL(url);
+    if (u.hostname === "pis.baiwang.com") {
+      const local = new URL(u.pathname === "/smkp-vue/previewInvoiceAllEle" ? "/bw-page" : u.pathname, base);
+      local.search = u.search;
+      return nodeFetcher(local.toString(), headers);
+    }
+    return nodeFetcher(url, headers);
+  };
+  const baiwang = await downloadFromLink(`https://pis.baiwang.com/smkp-vue/previewInvoiceAllEle?param=${baiwangParam}`, bwFetcher);
+  check("链接：百望动态页面 → downloadFormat 拿到 XML/PDF/OFD", expandFiles(baiwang).map((f) => f.kind).sort().join(",") === "ofd,pdf,xml");
+
   let err = "";
   try {
     await downloadFromLink(`${base}/dead`, nodeFetcher);
@@ -254,7 +304,7 @@ try {
   check("管线：邮箱系统通知忽略", system.ignored === "system");
 
   const pdfOnly = await processMessage(await compose({ from: "a@b.example", subject: "发票", text: "见附件", attachments: [{ filename: "发票.pdf", content: Buffer.from(PDF) }] }), { fetcher: nodeFetcher });
-  check("管线：只有 PDF → no-xml", pdfOnly.problems[0]?.reason === "no-xml", pdfOnly.problems);
+  check("管线：只有 PDF → 直接生成发票", pdfOnly.bundles.length === 1 && pdfOnly.problems.length === 0, pdfOnly.problems);
 
   const dead = await processMessage(await compose({ from: "a@b.example", subject: "发票", html: `<a href="${base}/dead">下载发票</a>` }), { fetcher: nodeFetcher });
   check("管线：链接失败 → link-failed 并保留链接", dead.problems[0]?.reason === "link-failed" && dead.problems[0]?.link === `${base}/dead`, dead.problems);
@@ -271,19 +321,19 @@ try {
   const paths = pathsFor(bundle, DEFAULT_SETTINGS);
   check("笔记路径", paths.note === "invoices/2026/09/2026-09-01 测试餐饮有限公司 100.00.md", paths.note);
   check("原始文件按号码命名", paths.pdf === `attachments/invoices/2026/${NO_A}.pdf`, paths.pdf);
-  const note = buildNote(bundle.invoice, paths, { initialStatus: "未报销", embedPdf: true, source: "vpiaotong.example", received: "2026-09-01T04:30:00.000Z" });
+  const note = buildNote(bundle.invoice, paths, { embedPdf: true, source: "vpiaotong.example", received: "2026-09-01T04:30:00.000Z" });
   check("号码加引号防丢精度", note.includes(`invoice_no: "${NO_A}"`));
   check("金额是数字", /\ntotal: 100\.00\n/.test(note));
-  check("status 初始值", note.includes('status: "未报销"'));
+  check("reimbursed 初始为未勾选", note.includes("reimbursed: false") && !note.includes("\nstatus:"));
   check("表格里的 *分类* 已转义", note.includes("\\*生产生活服务\\*餐饮服务"));
   check("内嵌 PDF", note.includes(`![[attachments/invoices/2026/${NO_A}.pdf#height=450]]`));
   check("机器区标记", note.includes("%% invoice-sync:start %%") && note.includes("%% invoice-sync:end %%"));
   check("空列不画", note.includes("| 项目 | 数量 | 单价 | 金额 | 税率 | 税额 |"), note.split("\n").find((l) => l.startsWith("| 项目")));
-  const flagged = buildNote(bundle.invoice, paths, { initialStatus: "未报销", embedPdf: false, buyerMismatch: true });
+  const flagged = buildNote(bundle.invoice, paths, { embedPdf: false, buyerMismatch: true });
   check("抬头不符标注", flagged.includes('check: "抬头不符"') && flagged.includes("[!warning] 抬头不符"));
 
-  const baseFile = baseFileContent("invoices", "未报销");
-  check("总表过滤根目录", baseFile.includes('file.inFolder("invoices")') && baseFile.includes("'status == \"未报销\"'"));
+  const baseFile = baseFileContent("invoices");
+  check("总表过滤根目录", baseFile.includes('file.inFolder("invoices")') && baseFile.includes("'reimbursed != true'") && baseFile.includes("note.reimbursed"));
 } finally {
   server.close();
 }
