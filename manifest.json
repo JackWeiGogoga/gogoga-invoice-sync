@@ -1,9 +1,10 @@
 {
-  "id": "invoice-sync",
-  "name": "Invoice Sync",
+  "id": "gogoga-invoice-sync",
+  "name": "gogoga Invoice Sync",
   "version": "0.1.0",
   "minAppVersion": "1.11.4",
   "description": "把 163 邮箱里的电子发票同步成笔记：解析数电票 XML、自动跟随下载链接、归档 PDF/OFD，并生成 Bases 总表。",
   "author": "jackwei",
-  "isDesktopOnly": true
+  "isDesktopOnly": true,
+  "authorUrl": "https://github.com/JackWeiGogoga"
 }
