@@ -1,10 +1,11 @@
-import { Notice, normalizePath, Plugin, TFile, WorkspaceLeaf } from "obsidian";
+import { getLanguage, Notice, normalizePath, Plugin, TFile, WorkspaceLeaf } from "obsidian";
 import { DEFAULT_SETTINGS, mergeSettings, type InvoiceSyncSettings } from "./settings";
 import { IndexStore } from "./core/index-store";
 import { SyncService, type ProgressFn, type SyncReport } from "./core/sync";
 import { InvoiceSyncSettingTab } from "./settings-tab";
 import { InvoiceSyncView, VIEW_TYPE_INVOICE_SYNC } from "./ui/sidebar";
-import { isReimbursed, reimbursementLabel, toggleReimbursed } from "./core/status";
+import { isReimbursed, toggleReimbursed } from "./core/status";
+import { setLocale, t, tn } from "./i18n";
 
 /** 启动后延迟多久再自动同步，避开 Obsidian 启动高峰。 */
 const STARTUP_DELAY_MS = 15_000;
@@ -17,6 +18,8 @@ export default class InvoiceSyncPlugin extends Plugin {
   private running: Promise<SyncReport> | null = null;
 
   async onload(): Promise<void> {
+    // 界面语言跟随 Obsidian：中文用简体中文，其他用英文。写进 vault 的数据不受影响。
+    setLocale(getLanguage());
     this.settings = mergeSettings(await this.loadData());
     this.index = new IndexStore(this.app, this.manifest.dir ?? `.obsidian/plugins/${this.manifest.id}`);
     await this.index.load();
@@ -24,14 +27,14 @@ export default class InvoiceSyncPlugin extends Plugin {
 
     this.registerView(VIEW_TYPE_INVOICE_SYNC, (leaf: WorkspaceLeaf) => new InvoiceSyncView(leaf, this));
     this.addSettingTab(new InvoiceSyncSettingTab(this.app, this));
-    this.addRibbonIcon("receipt", "发票", () => void this.activateView());
+    this.addRibbonIcon("receipt", t("ribbon.open"), () => void this.activateView());
 
-    this.addCommand({ id: "open-panel", name: "打开发票面板", callback: () => void this.activateView() });
-    this.addCommand({ id: "sync", name: "同步发票邮箱", callback: () => void this.runSyncWithNotice() });
-    this.addCommand({ id: "open-base", name: "打开发票总表", callback: () => void this.openBase() });
+    this.addCommand({ id: "open-panel", name: t("command.openPanel"), callback: () => void this.activateView() });
+    this.addCommand({ id: "sync", name: t("command.sync"), callback: () => void this.runSyncWithNotice() });
+    this.addCommand({ id: "open-base", name: t("command.openBase"), callback: () => void this.openBase() });
     this.addCommand({
       id: "toggle-current-invoice-status",
-      name: "切换当前发票报销状态",
+      name: t("command.toggleStatus"),
       checkCallback: (checking) => {
         const file = this.app.workspace.getActiveFile();
         if (!file || !this.isInvoice(file)) return false;
@@ -84,12 +87,12 @@ export default class InvoiceSyncPlugin extends Plugin {
   }
 
   private async runSyncWithNotice(): Promise<void> {
-    const notice = new Notice("发票同步中…", 0);
-    const r = await this.runSync((p) => notice.setMessage(`发票同步：${p.message}`));
+    const notice = new Notice(t("notice.syncing"), 0);
+    const r = await this.runSync((p) => notice.setMessage(t("notice.syncProgress", { message: p.message })));
     notice.setMessage(
       r.errors.length > 0
-        ? `发票同步失败：${r.errors[0]}`
-        : `发票同步完成：新增 ${r.created + r.imported} 张${r.problems ? `，${r.problems} 个待处理` : ""}`,
+        ? t("notice.syncFailed", { error: r.errors[0] ?? "" })
+        : tn("notice.syncDone", r.created + r.imported) + (r.problems ? tn("notice.syncDoneProblems", r.problems) : ""),
     );
     window.setTimeout(() => notice.hide(), 6000);
   }
@@ -147,16 +150,16 @@ export default class InvoiceSyncPlugin extends Plugin {
 
   /**
    * 在待报销与已报销之间一键切换。底层写入原生 Checkbox 布尔属性。
-   * 返回新状态；路径不是发票笔记时返回 undefined。
+   * 返回新状态（true 为已报销）；路径不是发票笔记时返回 undefined。
    */
-  async toggleInvoiceStatus(path: string, showNotice = false): Promise<string | undefined> {
+  async toggleInvoiceStatus(path: string, showNotice = false): Promise<boolean | undefined> {
     const file = this.app.vault.getFileByPath(path);
     if (!file || !this.isInvoice(file)) {
-      if (showNotice) new Notice("当前文件不是发票笔记");
+      if (showNotice) new Notice(t("notice.notInvoice"));
       return undefined;
     }
     let next = false;
-    await this.app.fileManager.processFrontMatter(file, (fm) => {
+    await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
       next = toggleReimbursed(fm.reimbursed, fm.status);
       fm.reimbursed = next;
       delete fm.status;
@@ -164,9 +167,8 @@ export default class InvoiceSyncPlugin extends Plugin {
     this.refreshView();
     // processFrontMatter 落盘早于 metadataCache 更新；稍后再刷新一次，避免面板短暂显示旧状态。
     window.setTimeout(() => this.refreshView(), 150);
-    const label = reimbursementLabel(next);
-    if (showNotice) new Notice(`已标记为${label}`);
-    return label;
+    if (showNotice) new Notice(t(next ? "notice.markedReimbursed" : "notice.markedPending"));
+    return next;
   }
 
   /**
@@ -186,7 +188,7 @@ export default class InvoiceSyncPlugin extends Plugin {
     const prefix = `${normalizePath(this.settings.rootFolder)}/`;
     for (const file of this.app.vault.getMarkdownFiles()) {
       if (!file.path.startsWith(prefix)) continue;
-      await this.app.fileManager.processFrontMatter(file, (fm) => {
+      await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
         if (fm.type !== "invoice") return;
         if (typeof fm.reimbursed !== "boolean") {
           fm.reimbursed = isReimbursed(fm.reimbursed, fm.status);

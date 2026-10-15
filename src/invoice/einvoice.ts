@@ -6,6 +6,7 @@
  */
 import type { Invoice, InvoiceItem } from "./model";
 import { child, children, decodeXmlBytes, parseXml, text, type XmlNode } from "./xml";
+import { t } from "../i18n";
 
 export class InvoiceParseError extends Error {}
 
@@ -88,13 +89,13 @@ function itemOf(node: XmlNode): InvoiceItem {
 export function parseEInvoice(data: Uint8Array): Invoice {
   const root = parseXml(decodeXmlBytes(data));
   if (!root || root.name !== "EInvoice") {
-    throw new InvoiceParseError(`不是数电票 XML（根节点 ${root?.name ?? "无"}）`);
+    throw new InvoiceParseError(t("parse.notEInvoice", { root: root?.name ?? t("parse.none") }));
   }
   const body = child(root, "EInvoiceData");
   const basic = child(body, "BasicInformation");
 
   const number = text(root, "TaxSupervisionInfo/InvoiceNumber") || text(root, "Header/EIid");
-  if (!/^\d{8,20}$/.test(number)) throw new InvoiceParseError("XML 里没有有效的发票号码");
+  if (!/^\d{8,20}$/.test(number)) throw new InvoiceParseError(t("parse.xmlNoNumber"));
 
   const items = children(body, "IssuItemInformation").map(itemOf);
   const invoice: Invoice = {
@@ -118,13 +119,14 @@ export function parseEInvoice(data: Uint8Array): Invoice {
     category: categoryOf(items),
     drawer: opt(text(basic, "Drawer")),
   };
-  if (!invoice.seller.name) throw new InvoiceParseError("XML 里没有销售方名称");
+  if (!invoice.seller.name) throw new InvoiceParseError(t("parse.xmlNoSeller"));
   return invoice;
 }
 
 /**
  * 金额自洽校验：金额 + 税额 = 价税合计，明细合计 = 金额。
  * 返回问题描述，没问题返回 null。
+ * 描述会写进笔记正文的警告块，属于数据，保持中文、不随界面语言变化。
  */
 export function checkAmounts(inv: Invoice): string | null {
   const cents = (v: number) => Math.round(v * 100);

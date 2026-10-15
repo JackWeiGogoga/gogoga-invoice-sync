@@ -7,6 +7,7 @@ import { unzipSync } from "fflate";
 import type { FileBlob, FileKind, InvoiceBundle } from "./model";
 import { InvoiceParseError, parseEInvoice } from "./einvoice";
 import { parsePdfInvoice } from "./pdf";
+import { t } from "../i18n";
 
 const MAX_DEPTH = 3;
 /** 随发票附带的非发票文件。 */
@@ -107,7 +108,7 @@ export function groupInvoices(files: FileBlob[], via: InvoiceBundle["via"]): Gro
       if (bundles.some((b) => b.invoice.number === invoice.number)) continue;
       bundles.push({ invoice, xml: f, extras: [], via });
     } catch (err) {
-      errors.push(`${f.name}：${err instanceof InvoiceParseError ? err.message : String(err)}`);
+      errors.push(t("parse.fileError", { name: f.name, message: err instanceof InvoiceParseError ? err.message : String(err) }));
     }
   }
 
@@ -140,7 +141,7 @@ export async function groupPdfInvoices(files: FileBlob[], via: InvoiceBundle["vi
       bundles.push({ invoice, pdf: file, extras: [], via });
     } catch (error) {
       failed.push(file);
-      errors.push(`${file.name}：${error instanceof InvoiceParseError ? error.message : String(error)}`);
+      errors.push(t("parse.fileError", { name: file.name, message: error instanceof InvoiceParseError ? error.message : String(error) }));
     }
   }
 
@@ -153,7 +154,7 @@ export async function groupPdfInvoices(files: FileBlob[], via: InvoiceBundle["vi
     else orphans.push(file);
   }
   for (const file of failed) {
-    if (bundles.length === 1 && SUPPLEMENT.test(file.name)) bundles[0]!.extras.push(file);
+    if (bundles.length === 1 && SUPPLEMENT.test(file.name)) bundles[0].extras.push(file);
     else orphans.push(file);
   }
   return { bundles, orphans, errors };

@@ -1,3 +1,6 @@
+import { t } from "../i18n";
+
+/** 旧版写进笔记的 status 文本值，只用于迁移判断，属于数据，不翻译。 */
 export const REIMBURSED_STATUS = "已报销";
 export const PENDING_STATUS = "未报销";
 
@@ -10,6 +13,7 @@ export function toggleReimbursed(current: unknown, legacyStatus?: unknown): bool
   return !isReimbursed(current, legacyStatus);
 }
 
+/** 界面上显示的状态文案，跟随界面语言。 */
 export function reimbursementLabel(reimbursed: boolean): string {
-  return reimbursed ? REIMBURSED_STATUS : PENDING_STATUS;
+  return reimbursed ? t("status.reimbursed") : t("status.pending");
 }

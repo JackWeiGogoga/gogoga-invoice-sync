@@ -7,6 +7,7 @@
 import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
 import { categoryOf, InvoiceParseError } from "./einvoice";
 import type { Invoice, InvoiceItem } from "./model";
+import { t } from "../i18n";
 
 type PdfWorkerGlobal = typeof globalThis & { pdfjsWorker?: { WorkerMessageHandler: unknown } };
 
@@ -177,8 +178,8 @@ function parseItems(rows: PdfRow[], header: PdfRow, total: PdfRow): InvoiceItem[
     let meaningful = false;
     for (const cluster of clustersOf(row)) {
       const anchorIndex = anchors.reduce((best, candidate, index) =>
-        Math.abs(candidate.x - cluster.x) < Math.abs(anchors[best]!.x - cluster.x) ? index : best, 0);
-      const anchor = anchors[anchorIndex]!;
+        Math.abs(candidate.x - cluster.x) < Math.abs(anchors[best].x - cluster.x) ? index : best, 0);
+      const anchor = anchors[anchorIndex];
       const value = normalizeText(cluster.text);
       if (anchor.field === "name") {
         item.name += value;
@@ -191,7 +192,7 @@ function parseItems(rows: PdfRow[], header: PdfRow, total: PdfRow): InvoiceItem[
         const values = nums(value);
         for (let i = 0; i < values.length; i += 1) {
           const target = anchors[anchorIndex + i]?.field;
-          if (target) setNumeric(item, target, values[i]!);
+          if (target) setNumeric(item, target, values[i]);
         }
         meaningful ||= values.length > 0;
       }
@@ -221,33 +222,34 @@ export async function parsePdfInvoice(data: Uint8Array): Promise<Invoice> {
       if (!("str" in raw)) return [];
       const text = normalizeText(raw.str);
       if (!text) return [];
-      return [{ text, x: raw.transform[4], y: raw.transform[5], width: raw.width, height: raw.height }];
+      const [, , , , x, y] = raw.transform as number[];
+      return [{ text, x, y, width: raw.width, height: raw.height }];
     });
-    if (items.length < 10) throw new InvoiceParseError("PDF 没有可用文字层（扫描件暂不支持）");
+    if (items.length < 10) throw new InvoiceParseError(t("parse.pdfNoText"));
 
     const rows = rowsOf(items);
     const all = compact(items.map((item) => item.text).join(""));
-    if (!/发票/.test(all)) throw new InvoiceParseError("PDF 不是可识别的发票");
+    if (!/发票/.test(all)) throw new InvoiceParseError(t("parse.pdfNotInvoice"));
 
     const number = firstMatch(rows, /发票号码/, /发票号码:?(\d{8,20})/);
-    if (!number) throw new InvoiceParseError("PDF 里没有有效的发票号码");
+    if (!number) throw new InvoiceParseError(t("parse.pdfNoNumber"));
     const dateRow = rows.find((row) => /开票日期/.test(compact(rowText(row))));
     const issuedMatch = dateRow ? /开票日期:?(\d{4})年?(\d{2})月?(\d{2})日?/.exec(compact(rowText(dateRow))) : undefined;
     const issued = issuedMatch ? `${issuedMatch[1]}-${issuedMatch[2]}-${issuedMatch[3]}` : "";
-    if (!issued) throw new InvoiceParseError("PDF 里没有有效的开票日期");
+    if (!issued) throw new InvoiceParseError(t("parse.pdfNoDate"));
 
     const header = rows.find((row) => /项目名称/.test(compact(rowText(row))));
     const totalRow = rows.find((row) => /合计/.test(compact(rowText(row))) && !/价税合计/.test(compact(rowText(row))));
     const grandRow = rows.find((row) => /价税合计/.test(compact(rowText(row))));
-    if (!header || !totalRow || !grandRow) throw new InvoiceParseError("PDF 发票表格结构无法识别");
+    if (!header || !totalRow || !grandRow) throw new InvoiceParseError(t("parse.pdfTable"));
 
     const totals = nums(rowText(totalRow));
     const grand = nums(rowText(grandRow)).at(-1);
-    if (totals.length < 2 || grand === undefined) throw new InvoiceParseError("PDF 里没有完整的金额与税额");
+    if (totals.length < 2 || grand === undefined) throw new InvoiceParseError(t("parse.pdfNoAmounts"));
 
     const buyer = partyName(rows, "left", viewport.width, header.y);
     const seller = partyName(rows, "right", viewport.width, header.y);
-    if (!buyer || !seller) throw new InvoiceParseError("PDF 里没有完整的购买方或销售方名称");
+    if (!buyer || !seller) throw new InvoiceParseError(t("parse.pdfNoParties"));
 
     const itemsParsed = parseItems(rows, header, totalRow);
     const invoice: Invoice = {
@@ -257,7 +259,7 @@ export async function parsePdfInvoice(data: Uint8Array): Promise<Invoice> {
       issued,
       seller: { name: seller, taxId: partyTaxId(items, "right", viewport.width, header.y) },
       buyer: { name: buyer, taxId: partyTaxId(items, "left", viewport.width, header.y) },
-      amount: totals[0]!,
+      amount: totals[0],
       tax: totals.at(-1)!,
       total: grand,
       items: itemsParsed,
@@ -267,8 +269,8 @@ export async function parsePdfInvoice(data: Uint8Array): Promise<Invoice> {
     } catch (error) {
       if (error instanceof InvoiceParseError) throw error;
       const message = error instanceof Error ? error.message : String(error);
-      if (/password/i.test(message)) throw new InvoiceParseError("PDF 已加密，无法读取");
-      throw new InvoiceParseError(`PDF 解析失败：${message}`);
+      if (/password/i.test(message)) throw new InvoiceParseError(t("parse.pdfEncrypted"));
+      throw new InvoiceParseError(t("parse.pdfFailed", { message }));
     } finally {
       await task.destroy().catch(() => {});
     }

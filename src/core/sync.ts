@@ -15,6 +15,7 @@ import { fetchNew, listFolders, withImap } from "../mail/imap";
 import { baseFileContent } from "./base-file";
 import { joinPath } from "./util";
 import { isReimbursed } from "./status";
+import { t } from "../i18n";
 
 export interface SyncProgress {
   message: string;
@@ -54,6 +55,12 @@ interface WriteMeta {
   received?: string;
 }
 
+/** 写进笔记 frontmatter `source` 的值，属于数据，不随界面语言变化。 */
+const IMPORT_SOURCE = "手动导入";
+
+/** 总表文件名：已有 vault 里的文件按这个名字查找，不随界面语言变化。 */
+const BASE_FILE_NAME = "发票总表.base";
+
 function toBuffer(data: Uint8Array): ArrayBuffer {
   return data.slice().buffer;
 }
@@ -85,7 +92,7 @@ export class SyncService {
   async testConnection(): Promise<Array<{ path: string; messages?: number }>> {
     const s = this.getSettings();
     const pass = this.password();
-    if (!s.email || !pass) throw new Error("请先填写邮箱地址并选择授权码");
+    if (!s.email || !pass) throw new Error(t("error.needCredentials"));
     return withImap({ host: s.host, port: s.port, user: s.email, pass }, listFolders);
   }
 
@@ -97,7 +104,7 @@ export class SyncService {
 
     const pass = this.password();
     if (!s.email || !pass) {
-      report.errors.push("尚未配置邮箱地址或授权码");
+      report.errors.push(t("error.notConfigured"));
     } else {
       try {
         await withImap({ host: s.host, port: s.port, user: s.email, pass }, async (client) => {
@@ -107,7 +114,7 @@ export class SyncService {
 
           for (const folder of targets) {
             const mark = this.index.getFolder(folder);
-            onProgress?.({ message: `检查 ${folder}…` });
+            onProgress?.({ message: t("progress.checkingFolder", { folder }) });
             await fetchNew(client, folder, {
               lastUid: mark?.lastUid ?? 0,
               uidValidity: mark?.uidValidity,
@@ -118,7 +125,7 @@ export class SyncService {
                 await this.handleMail(m.raw, `${folder}:${m.uidValidity}:${m.uid}`, report);
               },
               onAdvance: (next) => this.index.setFolder(folder, next),
-              onProgress: (done, total) => onProgress?.({ message: `处理 ${folder} 的新邮件`, current: done, total }),
+              onProgress: (done, total) => onProgress?.({ message: t("progress.processingFolder", { folder }), current: done, total }),
             });
             await this.index.save();
           }
@@ -128,7 +135,7 @@ export class SyncService {
       }
     }
 
-    onProgress?.({ message: "检查导入文件夹…" });
+    onProgress?.({ message: t("progress.checkingImport") });
     await this.processImportFolder(report);
     await this.index.save();
     return report;
@@ -250,7 +257,7 @@ export class SyncService {
 
     const noteItem = { subject: `${inv.seller.name} ¥${inv.total.toFixed(2)}`, invoiceNo: inv.number, notePath: paths.note };
     if (buyerMismatch) {
-      this.index.addQueueItem({ ...noteItem, reason: "buyer-mismatch", detail: `购买方是「${inv.buyer.name}」` });
+      this.index.addQueueItem({ ...noteItem, reason: "buyer-mismatch", detail: t("queue.buyerIs", { name: inv.buyer.name }) });
     }
     if (amountIssue) this.index.addQueueItem({ ...noteItem, reason: "amount-mismatch", detail: amountIssue });
     return true;
@@ -281,7 +288,7 @@ export class SyncService {
     if (grouped.bundles.length === 0) grouped = await groupPdfInvoices(leaves, "import");
     const used = new Set<FileBlob>();
     for (const b of grouped.bundles) {
-      await this.writeInvoice(b, { subject: `导入：${b.invoice.seller.name}`, source: "手动导入" });
+      await this.writeInvoice(b, { subject: t("queue.importSubject", { seller: b.invoice.seller.name }), source: IMPORT_SOURCE });
       report.imported += 1;
       for (const blob of [b.xml, b.pdf, b.ofd, ...b.extras]) if (blob) used.add(blob);
     }
@@ -291,7 +298,7 @@ export class SyncService {
       if (mine.length > 0 && mine.every((l) => used.has(l))) {
         await this.app.vault.trash(f, true);
       } else {
-        const why = grouped.errors.find((e) => mine.some((m) => e.startsWith(m.name))) ?? (mine.length === 0 ? "不是 XML/PDF/OFD/ZIP" : "没有对应的发票 XML");
+        const why = grouped.errors.find((e) => mine.some((m) => e.startsWith(m.name))) ?? (mine.length === 0 ? t("queue.unsupportedFile") : t("queue.noMatchingXml"));
         this.index.addQueueItem({ subject: f.name, notePath: f.path, reason: "import-failed", detail: why });
         report.problems += 1;
       }
@@ -339,14 +346,14 @@ export class SyncService {
     const s = this.getSettings();
     await this.ensureFolder(s.rootFolder);
     await this.ensureFolder(s.importFolder);
-    const basePath = joinPath(s.rootFolder, "发票总表.base");
+    const basePath = joinPath(s.rootFolder, BASE_FILE_NAME);
     if (!this.app.vault.getAbstractFileByPath(basePath)) {
       await this.app.vault.create(basePath, baseFileContent(s.rootFolder));
     }
   }
 
   get basePath(): string {
-    return joinPath(this.getSettings().rootFolder, "发票总表.base");
+    return joinPath(this.getSettings().rootFolder, BASE_FILE_NAME);
   }
 
   /** 侧边栏用的统计：从 frontmatter 现算，勾选「已报销」后立刻反映。 */

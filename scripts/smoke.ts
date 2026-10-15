@@ -17,6 +17,7 @@ import { buildNote, pathsFor } from "../src/core/note-builder";
 import { baseFileContent } from "../src/core/base-file";
 import { DEFAULT_SETTINGS } from "../src/settings";
 import { isReimbursed, reimbursementLabel, toggleReimbursed } from "../src/core/status";
+import { dictionaries, getLocale, setLocale, t, tn } from "../src/i18n";
 
 let pass = 0;
 let fail = 0;
@@ -89,7 +90,23 @@ function compose(opts: Record<string, unknown>): Promise<Uint8Array> {
   check("状态：已勾选 → 未报销", toggleReimbursed(true) === false);
   check("状态：兼容旧的已报销文本", isReimbursed(undefined, "已报销") === true);
   check("状态：布尔值优先于旧文本", isReimbursed(false, "已报销") === false);
-  check("状态：界面文案", reimbursementLabel(true) === "已报销" && reimbursementLabel(false) === "未报销");
+  setLocale("zh-TW");
+  check("状态：界面文案（中文）", reimbursementLabel(true) === "已报销" && reimbursementLabel(false) === "未报销");
+  setLocale("en");
+  check("状态：界面文案（英文）", reimbursementLabel(true) === "Reimbursed" && reimbursementLabel(false) === "Not reimbursed");
+}
+
+// ---------- 界面语言 ----------
+{
+  check("语言：zh 开头 → 中文", setLocale("zh") === "zh" && setLocale("zh-TW") === "zh");
+  check("语言：其他 → 英文", setLocale("ja") === "en" && setLocale("") === "en" && setLocale(undefined) === "en");
+  setLocale("en");
+  check("语言：默认英文", getLocale() === "en" && t("view.sync") === "Sync");
+  check("语言：插值", t("view.queueTitle", { n: 3 }) === "Needs attention · 3");
+  check("语言：未传的占位符原样保留", t("settings.dirTemplate.desc").includes("{year}"));
+  check("语言：复数", tn("view.tileCount", 1) === "1 invoice" && tn("view.tileCount", 2) === "2 invoices");
+  const missing = Object.keys(dictionaries.en).filter((k) => !(dictionaries.zh as Record<string, string>)[k]);
+  check("语言：中文字典无空缺", missing.length === 0, missing);
 }
 
 // ---------- 数电票解析 ----------
@@ -274,7 +291,15 @@ try {
   } catch (e) {
     err = e instanceof DownloadError ? e.message : `非预期错误 ${String(e)}`;
   }
-  check("链接：拿不到文件时说明原因", /落地页里没找到文件地址/.test(err), err);
+  check("链接：拿不到文件时说明原因", /No file URL found on the landing page/.test(err), err);
+  setLocale("zh");
+  try {
+    await downloadFromLink(`${base}/dead`, nodeFetcher);
+  } catch (e) {
+    err = e instanceof DownloadError ? e.message : `非预期错误 ${String(e)}`;
+  }
+  setLocale("en");
+  check("链接：拿不到文件时说明原因（中文）", /落地页里没找到文件地址/.test(err), err);
 
   // ---------- 整条管线 ----------
   const attached = await processMessage(

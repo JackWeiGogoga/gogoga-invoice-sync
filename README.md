@@ -6,13 +6,13 @@ Sync e-invoices from a dedicated invoice IMAP mailbox (163 Mail by default) into
 The plugin parses the national-standard XML of fully digital e-invoices (数电票). When an email has no attachment, it follows the download link in the email body.
 The original PDF, OFD, and XML files are archived in your vault, and the plugin generates an invoice overview table with Bases. Desktop only.
 
-The plugin interface is currently in Simplified Chinese.
+The interface follows Obsidian's language setting: English, or Simplified Chinese when Obsidian is set to Chinese. Generated invoice notes and the overview table keep Chinese property names.
 
 ## Usage
 
-1. In settings, enter your **邮箱地址** (Email address). Under **授权码** (Authorization code), pick or create a secret and paste your IMAP authorization code into it; it is kept in the system keychain. In 163 Mail, enable IMAP and generate the code under **设置 → POP3/SMTP/IMAP** (Settings → POP3/SMTP/IMAP). **测试连接** (Test connection) checks the login without reading any email.
-2. Run **同步发票邮箱** (Sync invoice mailbox) from the command palette, or open the invoice panel in the sidebar and select **同步** (Sync).
-3. Use **打开发票总表** (Open invoice overview) to see all invoices, and **切换当前发票报销状态** (Toggle reimbursement status of current invoice) to mark an invoice as reimbursed in its note.
+1. In settings, enter your **Email address**. Under **Authorization code**, pick or create a secret and paste your IMAP authorization code into it; it is kept in the system keychain. In 163 Mail, enable IMAP and generate the code under **设置 → POP3/SMTP/IMAP** (Settings → POP3/SMTP/IMAP). **Test connection** checks the login without reading any email.
+2. Run **Sync invoice mailbox** from the command palette, or open the invoice panel in the sidebar and select **Sync**.
+3. Use **Open invoice overview** to see all invoices, and **Toggle reimbursement status of current invoice** to mark an invoice as reimbursed in its note.
 
 You can also drop XML or ZIP files into `invoices/import/`. They're imported automatically on the next sync.
 

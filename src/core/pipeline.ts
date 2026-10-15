@@ -8,6 +8,7 @@ import type { FileBlob, InvoiceBundle } from "../invoice/model";
 import { expandFiles, groupInvoices, groupPdfInvoices } from "../invoice/files";
 import { downloadFromLink, type Fetcher } from "../invoice/download";
 import { candidateLinks, htmlToText } from "../mail/links";
+import { t, tn } from "../i18n";
 
 /** 邮箱服务商自己的通知（欢迎信、安全提醒、续费广告）。 */
 const SYSTEM_SENDERS = /(^|\.)netease\.com$/i;
@@ -71,7 +72,7 @@ export async function processMessage(raw: Uint8Array, deps: PipelineDeps = {}): 
   const from = mail.from?.value?.[0]?.address;
   const outcome: MailOutcome = {
     messageId: mail.messageId,
-    subject: mail.subject ?? "(无主题)",
+    subject: mail.subject ?? t("mail.noSubject"),
     from,
     date: mail.date?.toISOString(),
     bundles: [],
@@ -125,13 +126,13 @@ export async function processMessage(raw: Uint8Array, deps: PipelineDeps = {}): 
           collect(outcome, grouped);
           break;
         }
-        errors.push(pdfErrors[0] ?? "下载到的文件里没有可解析的发票 XML/PDF");
+        errors.push(pdfErrors[0] ?? t("mail.noInvoiceInDownload"));
       } catch (err) {
         errors.push(err instanceof Error ? err.message : String(err));
       }
     }
     if (outcome.bundles.length === 0) {
-      outcome.problems.push({ reason: "link-failed", detail: errors[0] ?? "下载失败", link: links[0]?.url });
+      outcome.problems.push({ reason: "link-failed", detail: errors[0] ?? t("mail.downloadFailed"), link: links[0]?.url });
     }
   }
 
@@ -141,11 +142,11 @@ export async function processMessage(raw: Uint8Array, deps: PipelineDeps = {}): 
     if (docs.length > 0) {
       outcome.problems.push({
         reason: "no-xml",
-        detail: pdfErrors[0] ?? `附件只有 ${docs.map((d) => d.kind.toUpperCase()).join("、")}，没有可解析的 XML；PDF 需要带可复制的文字层`,
+        detail: pdfErrors[0] ?? t("mail.attachmentsOnly", { kinds: docs.map((d) => d.kind.toUpperCase()).join(t("parse.listSeparator")) }),
         link: links[0]?.url,
       });
     } else if (links.length > 0) {
-      outcome.problems.push({ reason: "link-failed", detail: "未启用跟随下载链接", link: links[0]?.url });
+      outcome.problems.push({ reason: "link-failed", detail: t("mail.followLinksOff"), link: links[0]?.url });
     } else {
       outcome.ignored = "no-invoice";
     }
@@ -158,7 +159,9 @@ function collectPdf(outcome: MailOutcome, grouped: ReturnType<typeof groupInvoic
   if (grouped.orphans.length > 0 && grouped.bundles.length > 0) {
     outcome.problems.push({
       reason: "unmatched-files",
-      detail: `有 ${grouped.orphans.length} 个文件无法归入发票：${grouped.orphans.map((file) => file.name).join("、")}`,
+      detail: tn("mail.unassignedFiles", grouped.orphans.length, {
+        names: grouped.orphans.map((file) => file.name).join(t("parse.listSeparator")),
+      }),
     });
   }
 }
@@ -170,7 +173,9 @@ function collect(outcome: MailOutcome, grouped: ReturnType<typeof groupInvoices>
   if (grouped.orphans.length > 0 && grouped.bundles.length > 0) {
     outcome.problems.push({
       reason: "unmatched-files",
-      detail: `有 ${grouped.orphans.length} 个文件对不上发票号码：${grouped.orphans.map((o: FileBlob) => o.name).join("、")}`,
+      detail: tn("mail.unmatchedNumbers", grouped.orphans.length, {
+        names: grouped.orphans.map((o: FileBlob) => o.name).join(t("parse.listSeparator")),
+      }),
     });
   }
 }

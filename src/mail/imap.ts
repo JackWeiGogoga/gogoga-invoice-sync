@@ -3,6 +3,7 @@
  * 不改已读状态、不移动、不删除。
  */
 import { ImapFlow } from "imapflow";
+import { t } from "../i18n";
 
 export interface ImapConfig {
   host: string;
@@ -32,13 +33,13 @@ export class ImapError extends Error {}
 /** 把常见失败翻译成人话。 */
 export function explainImapError(err: unknown, host: string): string {
   const e = err as { message?: string; responseText?: string; authenticationFailed?: boolean; code?: string };
-  const text = `${e?.message ?? err} ${e?.responseText ?? ""}`;
-  if (/unsafe login/i.test(text)) return "163 拒绝了这个客户端（Unsafe Login），请把完整报错反馈给开发者。";
+  const text = `${e?.message ?? String(err)} ${e?.responseText ?? ""}`;
+  if (/unsafe login/i.test(text)) return t("imap.unsafeLogin");
   if (e?.authenticationFailed || /authenticat|LOGIN failed|password/i.test(text)) {
-    return "登录失败：请确认用的是「授权码」而不是网页登录密码，并且 163 网页版 设置 → POP3/SMTP/IMAP 里已开启 IMAP。";
+    return t("imap.authFailed");
   }
   if (/ENOTFOUND|ETIMEDOUT|ECONNREFUSED|ECONNRESET|EAI_AGAIN/.test(`${text} ${e?.code ?? ""}`)) {
-    return `连不上 ${host}，请检查网络。`;
+    return t("imap.unreachable", { host });
   }
   return e?.message ?? String(err);
 }

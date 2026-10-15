@@ -10,6 +10,7 @@ import * as http from "http";
 import * as https from "https";
 import { sniff } from "./files";
 import { decodeEntities } from "../mail/links";
+import { t, tn } from "../i18n";
 
 export interface FetchResult {
   status: number;
@@ -53,7 +54,7 @@ export const nodeFetcher: Fetcher = (url, headers) =>
         res.on("data", (c: Buffer) => {
           size += c.length;
           if (size > MAX_BYTES) {
-            req.destroy(new DownloadError("文件超过 25MB"));
+            req.destroy(new DownloadError(t("download.tooLarge")));
             return;
           }
           chunks.push(c);
@@ -62,7 +63,7 @@ export const nodeFetcher: Fetcher = (url, headers) =>
         res.on("error", reject);
       },
     );
-    req.on("timeout", () => req.destroy(new DownloadError("请求超时")));
+    req.on("timeout", () => req.destroy(new DownloadError(t("download.timeout"))));
     req.on("error", reject);
     req.end();
   });
@@ -192,7 +193,7 @@ async function walk(url: string, fetcher: Fetcher, jar: CookieJar): Promise<{ tr
     }
     return { trail, res, finalUrl: cur };
   }
-  throw new DownloadError("跳转次数过多");
+  throw new DownloadError(t("download.tooManyRedirects"));
 }
 
 function nameFor(res: FetchResult, url: string, kind: string): string {
@@ -256,8 +257,9 @@ export async function downloadFromLink(url: string, fetcher: Fetcher = nodeFetch
         return "?";
       }
     })();
-    const why = res.status !== 200 ? `HTTP ${res.status}` : /html/i.test(ctype) ? "落地页里没找到文件地址" : "返回的不是发票文件";
-    throw new DownloadError(`跳转 ${trail.length} 次到 ${host}：${why}${errors.length ? `（${errors[0]}）` : ""}`);
+    const why = res.status !== 200 ? `HTTP ${res.status}` : /html/i.test(ctype) ? t("download.noFileOnLanding") : t("download.notInvoiceFile");
+    const extra = errors[0] ? t("parse.detail", { detail: errors[0] }) : "";
+    throw new DownloadError(tn("download.failed", trail.length, { host, why, extra }));
   }
   return files;
 }

@@ -141,7 +141,7 @@ function machineBody(inv: Invoice, p: NotePaths, flags: NoteFlags): string {
 
   out.push("> [!info] 发票信息");
   out.push(`> - 发票号码：${inv.number}`);
-  out.push(`> - 票种：${inv.kind}　开票日期：${inv.issued}`);
+  out.push(`> - 票种：${inv.kind}\u3000开票日期：${inv.issued}`);
   out.push(`> - 销售方：${inv.seller.name}${inv.seller.taxId ? `（${inv.seller.taxId}）` : ""}`);
   out.push(`> - 购买方：${inv.buyer.name}${inv.buyer.taxId ? `（${inv.buyer.taxId}）` : ""}`);
   out.push(`> - 金额 ${money(inv.amount)} + 税额 ${money(inv.tax)} = **价税合计 ¥${money(inv.total)}**`);

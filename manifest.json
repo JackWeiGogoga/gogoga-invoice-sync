@@ -1,7 +1,7 @@
 {
   "id": "gogoga-invoice-sync",
   "name": "gogoga Invoice Sync",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "minAppVersion": "1.11.4",
   "description": "Sync e-invoices from 163 Mail into notes: parse digital e-invoice XML, follow download links automatically, archive PDF/OFD files, and generate a Bases overview table.",
   "author": "jackwei",

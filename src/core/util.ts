@@ -2,6 +2,7 @@
 
 /** Windows/macOS 都不允许或会让 Obsidian 困扰的字符。 */
 const ILLEGAL = /[\\/:*?"<>|#^[\]]/g;
+// eslint-disable-next-line no-control-regex -- 有意匹配控制字符：它们不能出现在文件名里
 const CONTROL = /[\u0000-\u001f\u007f]/g;
 
 /**

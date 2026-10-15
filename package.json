@@ -1,6 +1,6 @@
 {
   "name": "gogoga-invoice-sync",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "把 163 邮箱里的电子发票同步成 Obsidian 笔记",
@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "smoke": "node scripts/run-smoke.mjs",
     "survey": "node scripts/survey.mjs",
-    "survey:selftest": "node scripts/survey-selftest.mjs"
+    "survey:selftest": "node scripts/survey-selftest.mjs",
+    "lint": "eslint ."
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -23,13 +24,17 @@
     "mailparser": "^3.9.28"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@eslint/json": "0.14.0",
     "@types/mailparser": "^3.4.6",
     "@types/node": "^22.20.3",
-    "builtin-modules": "^4.0.0",
     "esbuild": "^0.24.2",
+    "eslint": "^9.39.5",
+    "eslint-plugin-obsidianmd": "0.4.2",
     "nodemailer": "^10.0.10",
     "obsidian": "1.13.1",
     "pdfjs-dist": "6.3.289",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.71.2"
   }
 }

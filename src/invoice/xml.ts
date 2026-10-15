@@ -48,7 +48,7 @@ export function parseXml(src: string): XmlNode | null {
 
   while (i < n) {
     const lt = src.indexOf("<", i);
-    const top = stack[stack.length - 1] as XmlNode;
+    const top = stack[stack.length - 1];
     if (lt === -1) {
       top.text += decodeEntities(src.slice(i));
       break;
@@ -70,7 +70,7 @@ export function parseXml(src: string): XmlNode | null {
       const name = localName(src.slice(lt + 2, end === -1 ? n : end).trim());
       // 容错：弹到同名元素为止，标签不配对也不至于整体失败
       for (let k = stack.length - 1; k > 0; k -= 1) {
-        if ((stack[k] as XmlNode).name === name) {
+        if (stack[k].name === name) {
           stack.length = k;
           break;
         }

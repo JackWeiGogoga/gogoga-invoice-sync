@@ -8,31 +8,30 @@ import type { QueueItem } from "../core/index-store";
 import type { ProblemReason } from "../core/pipeline";
 import type { SyncProgress, SyncReport } from "../core/sync";
 import { reimbursementLabel } from "../core/status";
+import { t, tn } from "../i18n";
 
 export const VIEW_TYPE_INVOICE_SYNC = "invoice-sync-view";
 
-const REASON_LABEL: Record<ProblemReason, string> = {
-  "no-xml": "文件无法解析",
-  "link-failed": "链接下载失败",
-  "xml-invalid": "XML 无法解析",
-  "unmatched-files": "文件对不上",
-  "amount-mismatch": "金额异常",
-  "buyer-mismatch": "抬头不符",
-  "import-failed": "导入失败",
-};
+/** 用时再查，界面语言在插件加载时才确定。未知原因（旧版本写入的索引）原样显示。 */
+function reasonLabel(reason: ProblemReason): string {
+  const known: readonly ProblemReason[] = [
+    "no-xml", "link-failed", "xml-invalid", "unmatched-files", "amount-mismatch", "buyer-mismatch", "import-failed",
+  ];
+  return known.includes(reason) ? t(`reason.${reason}`) : reason;
+}
 
 function yuan(v: number): string {
   return `¥${v.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function relTime(iso?: string): string {
-  if (!iso) return "尚未同步";
+  if (!iso) return t("view.neverSynced");
   const min = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
   if (Number.isNaN(min)) return "—";
-  if (min < 1) return "刚刚同步";
-  if (min < 60) return `${min} 分钟前同步`;
+  if (min < 1) return t("view.justSynced");
+  if (min < 60) return tn("view.syncedMinutes", min);
   const h = Math.floor(min / 60);
-  return h < 24 ? `${h} 小时前同步` : `${Math.floor(h / 24)} 天前同步`;
+  return h < 24 ? tn("view.syncedHours", h) : tn("view.syncedDays", Math.floor(h / 24));
 }
 
 export class InvoiceSyncView extends ItemView {
@@ -55,7 +54,7 @@ export class InvoiceSyncView extends ItemView {
   }
 
   getDisplayText(): string {
-    return "发票";
+    return t("view.title");
   }
 
   getIcon(): string {
@@ -83,16 +82,16 @@ export class InvoiceSyncView extends ItemView {
     root.addClass("invoice-sync-view");
 
     const header = root.createDiv({ cls: "invoice-sync-header" });
-    header.createEl("h3", { text: "发票", cls: "invoice-sync-title" });
+    header.createEl("h3", { text: t("view.title"), cls: "invoice-sync-title" });
     const actions = header.createDiv({ cls: "invoice-sync-header-actions" });
-    const baseBtn = actions.createEl("button", { cls: "invoice-sync-icon-btn", attr: { "aria-label": "打开发票总表" } });
+    const baseBtn = actions.createEl("button", { cls: "invoice-sync-icon-btn", attr: { "aria-label": t("command.openBase") } });
     setIcon(baseBtn, "table");
     baseBtn.onclick = () => void this.plugin.openBase();
-    const settingsBtn = actions.createEl("button", { cls: "invoice-sync-icon-btn", attr: { "aria-label": "设置" } });
+    const settingsBtn = actions.createEl("button", { cls: "invoice-sync-icon-btn", attr: { "aria-label": t("view.settings") } });
     setIcon(settingsBtn, "settings");
     settingsBtn.onclick = () => this.plugin.openSettings();
 
-    this.syncBtn = root.createEl("button", { text: "同步", cls: "invoice-sync-primary" });
+    this.syncBtn = root.createEl("button", { text: t("view.sync"), cls: "invoice-sync-primary" });
     this.syncBtn.onclick = () => void this.runSync();
 
     this.statusEl = root.createDiv({ cls: "invoice-sync-status" });
@@ -110,9 +109,9 @@ export class InvoiceSyncView extends ItemView {
 
     if (!this.plugin.sync.isConfigured()) {
       const setup = el.createDiv({ cls: "invoice-sync-setup" });
-      setup.createDiv({ text: "还没有配置邮箱", cls: "invoice-sync-setup-title" });
-      setup.createDiv({ text: "填好邮箱地址和 IMAP 授权码后就能同步。", cls: "invoice-sync-muted" });
-      const go = setup.createEl("button", { text: "去设置" });
+      setup.createDiv({ text: t("view.setupTitle"), cls: "invoice-sync-setup-title" });
+      setup.createDiv({ text: t("view.setupDesc"), cls: "invoice-sync-muted" });
+      const go = setup.createEl("button", { text: t("view.goToSettings") });
       go.onclick = () => this.plugin.openSettings();
     }
 
@@ -120,21 +119,21 @@ export class InvoiceSyncView extends ItemView {
     const st = this.plugin.sync.stats();
     const tiles = el.createDiv({ cls: "invoice-sync-tiles" });
     const tile = (label: string, count: number, total: number, cls = "") => {
-      const t = tiles.createDiv({ cls: `invoice-sync-tile ${cls}` });
-      t.createDiv({ text: label, cls: "invoice-sync-tile-label" });
+      const card = tiles.createDiv({ cls: `invoice-sync-tile ${cls}` });
+      card.createDiv({ text: label, cls: "invoice-sync-tile-label" });
       // 卡片太窄放不下分，取整显示，悬停看精确值
-      t.createDiv({ text: `¥${Math.round(total).toLocaleString("zh-CN")}`, cls: "invoice-sync-tile-value", attr: { title: yuan(total) } });
-      t.createDiv({ text: `${count} 张`, cls: "invoice-sync-tile-sub" });
+      card.createDiv({ text: `¥${Math.round(total).toLocaleString("zh-CN")}`, cls: "invoice-sync-tile-value", attr: { title: yuan(total) } });
+      card.createDiv({ text: tn("view.tileCount", count), cls: "invoice-sync-tile-sub" });
     };
-    tile("未报销", st.unreimbursed, st.unreimbursedTotal, st.unreimbursed > 0 ? "is-accent" : "");
-    tile("本月", st.thisMonth, st.thisMonthTotal);
-    tile("全部", st.count, st.total);
+    tile(t("view.tileUnreimbursed"), st.unreimbursed, st.unreimbursedTotal, st.unreimbursed > 0 ? "is-accent" : "");
+    tile(t("view.tileThisMonth"), st.thisMonth, st.thisMonthTotal);
+    tile(t("view.tileAll"), st.count, st.total);
 
     // 待处理
     const queue = this.plugin.index.queue;
     if (queue.length > 0) {
       const sec = el.createDiv({ cls: "invoice-sync-section" });
-      sec.createDiv({ text: `待处理 · ${queue.length}`, cls: "invoice-sync-section-title" });
+      sec.createDiv({ text: t("view.queueTitle", { n: queue.length }), cls: "invoice-sync-section-title" });
       for (const item of queue) this.renderQueueItem(sec, item);
     }
 
@@ -142,7 +141,7 @@ export class InvoiceSyncView extends ItemView {
     const recent = this.plugin.sync.recent();
     if (recent.length > 0) {
       const sec = el.createDiv({ cls: "invoice-sync-section" });
-      sec.createDiv({ text: "最近", cls: "invoice-sync-section-title" });
+      sec.createDiv({ text: t("view.recent"), cls: "invoice-sync-section-title" });
       for (const r of recent) {
         const row = sec.createDiv({ cls: "invoice-sync-row" });
         const main = row.createDiv({ cls: "invoice-sync-row-main" });
@@ -154,26 +153,26 @@ export class InvoiceSyncView extends ItemView {
         const status = right.createEl("button", {
           text: label,
           cls: `invoice-sync-chip${r.reimbursed ? "" : " is-pending"}`,
-          attr: { title: "点击切换报销状态", "aria-label": `${r.seller}：${label}，点击切换` },
+          attr: { title: t("view.toggleHint"), "aria-label": t("view.toggleAria", { seller: r.seller, status: label }) },
         });
         status.onclick = async (event) => {
           event.stopPropagation();
           status.disabled = true;
           const next = await this.plugin.toggleInvoiceStatus(r.path);
-          if (next) new Notice(`已标记为${next}`);
+          if (next !== undefined) new Notice(t(next ? "notice.markedReimbursed" : "notice.markedPending"));
           this.renderBody();
         };
         row.onclick = () => void this.app.workspace.openLinkText(r.path, "", false);
       }
     } else if (this.plugin.sync.isConfigured()) {
-      el.createDiv({ text: "还没有发票，点「同步」拉取邮箱。", cls: "invoice-sync-muted invoice-sync-empty" });
+      el.createDiv({ text: t("view.empty"), cls: "invoice-sync-muted invoice-sync-empty" });
     }
   }
 
   private renderQueueItem(parent: HTMLElement, item: QueueItem): void {
     const card = parent.createDiv({ cls: "invoice-sync-queue-item" });
     const top = card.createDiv({ cls: "invoice-sync-queue-top" });
-    top.createSpan({ text: REASON_LABEL[item.reason] ?? item.reason, cls: `invoice-sync-reason reason-${item.reason}` });
+    top.createSpan({ text: reasonLabel(item.reason), cls: `invoice-sync-reason reason-${item.reason}` });
     top.createSpan({ text: item.subject, cls: "invoice-sync-queue-subject" });
     card.createDiv({ text: item.detail, cls: "invoice-sync-muted invoice-sync-queue-detail" });
 
@@ -191,23 +190,24 @@ export class InvoiceSyncView extends ItemView {
       };
     };
     if (item.notePath && item.reason !== "import-failed") {
-      btn("打开笔记", () => void this.app.workspace.openLinkText(item.notePath ?? "", "", false));
+      btn(t("queue.openNote"), () => void this.app.workspace.openLinkText(item.notePath ?? "", "", false));
     }
-    if (item.link) btn("打开链接", () => void window.open(item.link, "_blank"));
+    if (item.link) btn(t("queue.openLink"), () => void window.open(item.link, "_blank"));
     if (item.rawFile || item.reason === "import-failed") {
-      btn("重试", async () => {
+      btn(t("queue.retry"), async () => {
         const r = await this.plugin.sync.retry(item);
-        new Notice(r.created + r.imported > 0 ? `已生成 ${r.created + r.imported} 张发票` : "仍未成功，详情见待处理");
+        const made = r.created + r.imported;
+        new Notice(made > 0 ? tn("queue.retrySuccess", made) : t("queue.retryFailed"));
       });
     }
-    btn(item.reason === "buyer-mismatch" || item.reason === "amount-mismatch" ? "知道了" : "忽略", () => this.plugin.sync.dismiss(item));
+    btn(item.reason === "buyer-mismatch" || item.reason === "amount-mismatch" ? t("queue.acknowledge") : t("queue.ignore"), () => this.plugin.sync.dismiss(item));
   }
 
   private onProgress(p: SyncProgress): void {
     this.statusEl.setText(p.message);
     if (p.total && p.current !== undefined) {
       this.barWrapEl.show();
-      this.barEl.style.width = `${Math.min(100, Math.round((p.current / p.total) * 100))}%`;
+      this.barEl.setCssProps({ width: `${Math.min(100, Math.round((p.current / p.total) * 100))}%` });
     }
   }
 
@@ -215,7 +215,7 @@ export class InvoiceSyncView extends ItemView {
     if (this.busy) return;
     this.busy = true;
     this.syncBtn.disabled = true;
-    this.syncBtn.setText("同步中…");
+    this.syncBtn.setText(t("view.syncing"));
     this.statusEl.removeClass("is-error");
     let report: SyncReport | null = null;
     try {
@@ -223,9 +223,9 @@ export class InvoiceSyncView extends ItemView {
     } finally {
       this.busy = false;
       this.syncBtn.disabled = false;
-      this.syncBtn.setText("同步");
+      this.syncBtn.setText(t("view.sync"));
       this.barWrapEl.hide();
-      this.barEl.style.width = "0%";
+      this.barEl.setCssProps({ width: "0%" });
       this.renderBody();
       if (report) this.showReport(report);
     }
@@ -233,14 +233,14 @@ export class InvoiceSyncView extends ItemView {
 
   private showReport(r: SyncReport): void {
     if (r.errors.length > 0) {
-      this.statusEl.setText(r.errors[0] ?? "同步失败");
+      this.statusEl.setText(r.errors[0] ?? t("view.syncFailed"));
       this.statusEl.addClass("is-error");
       return;
     }
-    const parts = [`检查 ${r.mails} 封新邮件`];
-    if (r.created) parts.push(`新增 ${r.created} 张`);
-    if (r.imported) parts.push(`导入 ${r.imported} 张`);
-    if (r.problems) parts.push(`${r.problems} 个待处理`);
+    const parts = [tn("report.checked", r.mails)];
+    if (r.created) parts.push(t("report.created", { n: r.created }));
+    if (r.imported) parts.push(t("report.imported", { n: r.imported }));
+    if (r.problems) parts.push(tn("report.problems", r.problems));
     this.statusEl.setText(parts.join(" · "));
   }
 }
