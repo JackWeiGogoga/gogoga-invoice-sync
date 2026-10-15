@@ -1,46 +1,50 @@
 # gogoga Invoice Sync
 
-把专收发票的 IMAP 邮箱（默认 163 邮箱）里的电子发票同步成 Obsidian 笔记：
-解析数电票国标 XML，邮件里没有附件时跟随正文里的下载链接去拿，
-原始 PDF/OFD/XML 归档进 vault，并生成一张 Bases 发票总表。仅桌面端。
+**English** | [简体中文](https://github.com/JackWeiGogoga/gogoga-invoice-sync/blob/main/README.zh-CN.md)
 
-## 用法
+Sync e-invoices from a dedicated invoice IMAP mailbox (163 Mail by default) into Obsidian notes.
+The plugin parses the national-standard XML of fully digital e-invoices (数电票). When an email has no attachment, it follows the download link in the email body.
+The original PDF, OFD, and XML files are archived in your vault, and the plugin generates an invoice overview table with Bases. Desktop only.
 
-1. 在设置里填邮箱地址和 IMAP 授权码（163 邮箱在「设置 → POP3/SMTP/IMAP」里开启 IMAP 并生成授权码）。
-2. 命令面板运行「同步发票邮箱」，或打开侧边栏的发票面板点「同步」。
-3. 「打开发票总表」查看全部发票；「切换当前发票报销状态」在笔记里标记已报销。
+The plugin interface is currently in Simplified Chinese.
 
-也可以把 XML/ZIP 丢进 `invoices/import/`，下次同步时自动导入。
+## Usage
 
-生成的位置（都可在设置里改）：
+1. In settings, enter your **邮箱地址** (Email address). Under **授权码** (Authorization code), pick or create a secret and paste your IMAP authorization code into it; it is kept in the system keychain. In 163 Mail, enable IMAP and generate the code under **设置 → POP3/SMTP/IMAP** (Settings → POP3/SMTP/IMAP). **测试连接** (Test connection) checks the login without reading any email.
+2. Run **同步发票邮箱** (Sync invoice mailbox) from the command palette, or open the invoice panel in the sidebar and select **同步** (Sync).
+3. Use **打开发票总表** (Open invoice overview) to see all invoices, and **切换当前发票报销状态** (Toggle reimbursement status of current invoice) to mark an invoice as reimbursed in its note.
 
-- 笔记：`invoices/{year}/{month}/{date} {seller} {total}.md`
-- 原始文件：`attachments/invoices/{year}/`
-- 总表：`invoices/发票总表.base`
+You can also drop XML or ZIP files into `invoices/import/`. They're imported automatically on the next sync.
 
-笔记里 `%% invoice-sync:start/end %%` 之间是插件管理的区域，标记之外的内容不会被改写。
+Output locations (all configurable in settings):
 
-## 网络与隐私
+- Notes: `invoices/{year}/{month}/{date} {seller} {total}.md`
+- Original files: `attachments/invoices/{year}/`
+- Overview table: `invoices/发票总表.base`
 
-- **IMAP**：直连你在设置里填的邮件服务器（默认 `imap.163.com:993`，TLS），只读取邮件，不删除、不发送。
-- **发票下载链接**：邮件里没有 XML 附件时，会访问邮件正文中的开票平台链接（跟随短链跳转）下载 XML/PDF/OFD。
-- 授权码存在 Obsidian 的 SecretStorage（系统钥匙串），不会写进随 vault 同步的 `data.json`。
-- 不接入任何大模型或第三方中转服务，没有遥测。
+The area between `%% invoice-sync:start/end %%` in a note is managed by the plugin. Content outside the markers is never rewritten.
 
-## 开发
+## Network and privacy
+
+- **IMAP**: Connects directly to the mail server you configure in settings (default `imap.163.com:993`, TLS). It only reads email, and never deletes or sends any.
+- **Invoice download links**: When an email has no XML attachment, the plugin visits the invoicing platform link in the email body (following short-link redirects) to download the XML, PDF, or OFD file.
+- The authorization code is stored in Obsidian's SecretStorage (the system keychain), and is never written to `data.json`, which syncs with your vault.
+- No large language models or third-party relay services are used, and there is no telemetry.
+
+## Development
 
 ```bash
 pnpm install
-pnpm build          # 构建到 dist/main.js
-pnpm smoke          # 离线冒烟测试
+pnpm build          # outputs dist/main.js
+pnpm smoke          # offline smoke tests
 ```
 
-安装到 vault：把 `dist/main.js`、`manifest.json`、`styles.css` 放进
-`<vault>/.obsidian/plugins/gogoga-invoice-sync/`。
+To install into a vault, copy `dist/main.js`, `manifest.json`, and `styles.css` into
+`<vault>/.obsidian/plugins/gogoga-invoice-sync/`.
 
-发布：`git tag 0.1.1 && git push --tags`（tag 必须与 manifest.json 的 version 一致，不带 v），
-GitHub Actions 会构建并把三个文件挂到 Release，可用 BRAT 安装。
+To release: `git tag 0.1.1 && git push --tags` (the tag must match the version in manifest.json, without a `v` prefix).
+GitHub Actions builds the plugin and attaches the three files to the release, which you can then install with BRAT.
 
-## 许可
+## License
 
-MIT，见 [LICENSE](LICENSE)。
+MIT. See [LICENSE](https://github.com/JackWeiGogoga/gogoga-invoice-sync/blob/main/LICENSE).

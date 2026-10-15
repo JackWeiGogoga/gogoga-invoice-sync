@@ -3,7 +3,7 @@
   "name": "gogoga Invoice Sync",
   "version": "0.1.0",
   "minAppVersion": "1.11.4",
-  "description": "把 163 邮箱里的电子发票同步成笔记：解析数电票 XML、自动跟随下载链接、归档 PDF/OFD，并生成 Bases 总表。",
+  "description": "Sync e-invoices from 163 Mail into notes: parse digital e-invoice XML, follow download links automatically, archive PDF/OFD files, and generate a Bases overview table.",
   "author": "jackwei",
   "isDesktopOnly": true,
   "authorUrl": "https://github.com/JackWeiGogoga"
