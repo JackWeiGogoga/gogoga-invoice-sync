@@ -45,6 +45,10 @@ pnpm smoke          # 离线冒烟测试
 发布：`git tag 0.1.1 && git push --tags`（tag 必须与 manifest.json 的 version 一致，不带 v），
 GitHub Actions 会构建并把三个文件挂到 Release，可用 BRAT 安装。
 
+## 更新日志
+
+每个版本的变化见 [CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md)（[English](CHANGELOG.md)）。发版前先写好新版本的条目：Release 说明从这里取，没写时发布会失败。
+
 ## 许可
 
 MIT，见 [LICENSE](https://github.com/JackWeiGogoga/gogoga-invoice-sync/blob/main/LICENSE)。

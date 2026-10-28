@@ -45,6 +45,10 @@ To install into a vault, copy `dist/main.js`, `manifest.json`, and `styles.css` 
 To release: `git tag 0.1.1 && git push --tags` (the tag must match the version in manifest.json, without a `v` prefix).
 GitHub Actions builds the plugin and attaches the three files to the release, which you can then install with BRAT.
 
+## Changelog
+
+What changed in each version is in [CHANGELOG.md](CHANGELOG.md) ([中文](CHANGELOG.zh-CN.md)). Add the new version there before releasing: the release notes are taken from it, and the release fails when the entry is missing.
+
 ## License
 
 MIT. See [LICENSE](https://github.com/JackWeiGogoga/gogoga-invoice-sync/blob/main/LICENSE).
