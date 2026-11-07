@@ -8,6 +8,23 @@ The original PDF, OFD, and XML files are archived in your vault, and the plugin 
 
 The interface follows Obsidian's language setting: English, or Simplified Chinese when Obsidian is set to Chinese. Generated invoice notes and the overview table keep Chinese property names.
 
+## Install
+
+### With BRAT (recommended)
+
+This plugin isn't in the community directory. Install it with [BRAT](https://github.com/TfTHacker/obsidian42-brat), which also keeps it updated: install and enable **BRAT** from the community plugins, click **Add beta plugin** in BRAT's settings, enter `https://github.com/JackWeiGogoga/gogoga-invoice-sync`, then enable **gogoga Invoice Sync** under Settings → Community plugins.
+
+### Manual install
+
+For offline machines (such as a company network) or to pin a specific version:
+
+1. Open the [Releases page](https://github.com/JackWeiGogoga/gogoga-invoice-sync/releases/latest) and download the three files `main.js`, `manifest.json`, `styles.css` under **Assets**. **Don't download the Source code archives**: they are the source code, which Obsidian can't load.
+2. In your vault's folder, go to `.obsidian/plugins/`, create a folder named `gogoga-invoice-sync`, and put the files in it, so you end up with paths like `<vault>/.obsidian/plugins/gogoga-invoice-sync/main.js`.
+   - `.obsidian` is a hidden folder: press `⌘ ⇧ .` in Finder on macOS; on Windows, tick **Hidden items** under **View** in File Explorer.
+3. Restart Obsidian (or click the refresh button under Settings → Community plugins), then enable **gogoga Invoice Sync** in the list of installed plugins.
+
+On phones, where moving files around is awkward, use BRAT.
+
 ## Usage
 
 1. In settings, enter your **Email address**. Under **Authorization code**, pick or create a secret and paste your IMAP authorization code into it; it is kept in the system keychain. In 163 Mail, enable IMAP and generate the code under **设置 → POP3/SMTP/IMAP** (Settings → POP3/SMTP/IMAP). **Test connection** checks the login without reading any email.

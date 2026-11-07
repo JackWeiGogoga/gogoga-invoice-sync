@@ -8,6 +8,23 @@
 
 界面语言跟随 Obsidian 的语言设置，支持简体中文和英文。
 
+## 安装
+
+### 用 BRAT 安装（推荐）
+
+本插件没有上架插件市场，可以用 [BRAT](https://github.com/TfTHacker/obsidian42-brat) 安装，之后有新版本会自动更新：先在插件市场安装并启用 **BRAT**，然后在 BRAT 的设置里点 **Add beta plugin**，填入 `https://github.com/JackWeiGogoga/gogoga-invoice-sync`，确认后在 设置 → 第三方插件 里启用 **gogoga Invoice Sync**。
+
+### 手动安装
+
+不能联网（比如公司内网）、或者想装指定版本时用：
+
+1. 打开 [Releases 页面](https://github.com/JackWeiGogoga/gogoga-invoice-sync/releases/latest)，在 **Assets** 里下载 `main.js`、`manifest.json`、`styles.css` 这三个文件。**不要下载 Source code 压缩包**：那是源码，Obsidian 用不了。
+2. 打开你的库（vault）所在文件夹，进到 `.obsidian/plugins/`，新建一个叫 `gogoga-invoice-sync` 的文件夹，把下载的文件放进去，最后是 `<库>/.obsidian/plugins/gogoga-invoice-sync/main.js` 这样的路径。
+   - `.obsidian` 是隐藏文件夹：macOS 在访达里按 `⌘ ⇧ .` 显示；Windows 在资源管理器的「查看」里勾选「隐藏的项目」。
+3. 重启 Obsidian（或在 设置 → 第三方插件 里点刷新按钮），在「已安装插件」列表里启用 **gogoga Invoice Sync**。
+
+手机上不方便放文件，建议用 BRAT 装。
+
 ## 用法
 
 1. 在设置里填好**邮箱地址**，在**授权码**一项里选择或新建一个密钥，把 IMAP 授权码存进去（保存在系统钥匙串）。163 邮箱在「设置 → POP3/SMTP/IMAP」里开启 IMAP 并生成授权码。**测试连接**只登录、不读取邮件内容。
