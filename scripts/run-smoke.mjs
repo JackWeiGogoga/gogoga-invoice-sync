@@ -2,6 +2,9 @@
 import esbuild from "esbuild";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
 
 const entry = process.argv[2] ?? "scripts/smoke.ts";
 // 输出放在 node_modules/.cache 下，运行时能就近解析依赖
@@ -16,6 +19,16 @@ await esbuild.build({
   packages: "external",
   // 测试不加载 Obsidian；被测模块只从 obsidian 引类型
   external: ["obsidian"],
+  // 依赖都留给运行时解析，唯独 pdf.js 的 .bcmap 要像正式构建一样内联成二进制
+  loader: { ".bcmap": "binary" },
+  plugins: [
+    {
+      name: "inline-bcmap",
+      setup(build) {
+        build.onResolve({ filter: /\.bcmap$/ }, (args) => ({ path: require.resolve(args.path) }));
+      },
+    },
+  ],
   outfile: out,
   logLevel: "warning",
 });

@@ -2,6 +2,11 @@
 
 gogoga Invoice Sync 每个版本的主要变化都记在这里。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。English: [CHANGELOG.md](CHANGELOG.md).
 
+## [Unreleased]
+
+### 修复
+- 只有 PDF 的发票，如果号码、日期、名称、金额用未嵌入的中文标准字体（STSong-Light 等预置 GB 编码）书写，之前读不出文字，会以「PDF 里没有有效的发票号码」进入待处理。现在插件内置了 pdf.js 的简体中文 CMap，可以正常解析。
+
 ## [0.2.0] - 2026-10-15
 
 ### 新增

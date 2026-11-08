@@ -2,6 +2,11 @@
 
 All notable changes to gogoga Invoice Sync are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/). 中文版见 [CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md).
 
+## [Unreleased]
+
+### Fixed
+- PDF-only invoices whose number, date, names and amounts are set in a non-embedded Chinese standard font (STSong-Light and other predefined GB encodings) lost all that text and landed in the pending queue as "no valid invoice number". The plugin now bundles pdf.js's Simplified Chinese CMaps, so these PDFs parse correctly.
+
 ## [0.2.0] - 2026-10-15
 
 ### Added

@@ -15,6 +15,8 @@ const context = await esbuild.context({
   sourcemap: production ? false : "inline",
   treeShaking: true,
   minify: production,
+  // pdf.js 的中文 CMap 以二进制内联（见 src/invoice/cmaps.ts）
+  loader: { ".bcmap": "binary" },
   outfile: "dist/main.js",
 });
 

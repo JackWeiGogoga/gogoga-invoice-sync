@@ -195,6 +195,12 @@ function compose(opts: Record<string, unknown>): Promise<Uint8Array> {
   check("PDF：买卖方", inv.buyer.name === "测试个人" && inv.seller.name === "测试餐饮有限公司", [inv.buyer.name, inv.seller.name]);
   check("PDF：金额", inv.amount === 94.34 && inv.tax === 5.66 && inv.total === 100, [inv.amount, inv.tax, inv.total]);
   check("PDF：明细和类别", inv.items[0]?.name === "*餐饮服务*餐费" && inv.category === "餐饮", inv.items);
+  // 未嵌入的 STSong-Light + UniGB-UCS2-H：没有内置 CMap 时号码等文字会整段丢失
+  const cjk = await parsePdfInvoice(fixture("fake-cmap-invoice.pdf"));
+  check("PDF 预置中文 CMap：号码", cjk.number === "26110000000000000002", cjk.number);
+  check("PDF 预置中文 CMap：日期", cjk.issued === "2026-10-18", cjk.issued);
+  check("PDF 预置中文 CMap：买卖方", cjk.buyer.name === "测试个人" && cjk.seller.name === "测试小吃有限公司", [cjk.buyer.name, cjk.seller.name]);
+  check("PDF 预置中文 CMap：金额", cjk.amount === 188.12 && cjk.tax === 1.88 && cjk.total === 190, [cjk.amount, cjk.tax, cjk.total]);
   check(
     "PDF：解析后恢复全局 worker，不干扰 Obsidian 查看器",
     hadWorker ? workerRoot.pdfjsWorker === previousWorker : !Object.prototype.hasOwnProperty.call(workerRoot, "pdfjsWorker"),

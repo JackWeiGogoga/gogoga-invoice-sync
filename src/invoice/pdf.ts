@@ -5,6 +5,7 @@
  * 买卖方按页面左右半区识别，表格按表头坐标分列。扫描件暂不做 OCR。
  */
 import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
+import { GB_CMAPS } from "./cmaps";
 import { categoryOf, InvoiceParseError } from "./einvoice";
 import type { Invoice, InvoiceItem } from "./model";
 import { t } from "../i18n";
@@ -37,6 +38,20 @@ async function withIsolatedPdfWorker<T>(run: () => Promise<T>): Promise<T> {
     if (hadWorker) root.pdfjsWorker = previousWorker;
     else delete root.pdfjsWorker;
     unlock();
+  }
+}
+
+/**
+ * 给 pdf.js 供应内置的 CMap。插件里没有可 fetch 的 cMapUrl，没有它的话，
+ * 使用预置中文编码（如 STSong-Light + UniGB-UCS2-H）的文字会整段提取不出来。
+ * 标准字体数据只影响字形渲染，取文字用不到，直接拒绝。
+ */
+class EmbeddedBinaryDataFactory {
+  async fetch({ kind, filename }: { kind: string; filename: string }): Promise<Uint8Array> {
+    const data = kind === "cMapUrl" ? GB_CMAPS[filename] : undefined;
+    if (!data) throw new Error(`no embedded ${kind}: ${filename}`);
+    // pdf.js 可能把数据转移给 worker，给它一份副本
+    return data.slice();
   }
 }
 
@@ -212,7 +227,11 @@ function kindOf(text: string): string {
 
 export async function parsePdfInvoice(data: Uint8Array): Promise<Invoice> {
   return withIsolatedPdfWorker(async () => {
-    const task = pdfjs.getDocument({ data: data.slice(), verbosity: 0 });
+    const task = pdfjs.getDocument({
+      data: data.slice(),
+      verbosity: 0,
+      BinaryDataFactory: EmbeddedBinaryDataFactory,
+    });
     try {
       const doc = await task.promise;
     const page = await doc.getPage(1);
