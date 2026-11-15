@@ -62,6 +62,10 @@ To install into a vault, copy `dist/main.js`, `manifest.json`, and `styles.css` 
 To release: `git tag 0.1.1 && git push --tags` (the tag must match the version in manifest.json, without a `v` prefix).
 GitHub Actions builds the plugin and attaches the three files to the release, which you can then install with BRAT.
 
+## Community
+
+Bugs and feature requests: please open an [issue](https://github.com/JackWeiGogoga/gogoga-invoice-sync/issues) with a screenshot or recording and the version. Chinese-speaking users can also join the WeChat group: add `JackWeiGogoga` with the note “gogoga”, or scan the QR code on the [community page](https://obsidian.gogoga.top/en/community/).
+
 ## Changelog
 
 What changed in each version is in [CHANGELOG.md](CHANGELOG.md) ([中文](CHANGELOG.zh-CN.md)). Add the new version there before releasing: the release notes are taken from it, and the release fails when the entry is missing.

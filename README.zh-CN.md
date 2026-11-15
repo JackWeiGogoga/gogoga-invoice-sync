@@ -62,6 +62,10 @@ pnpm smoke          # 离线冒烟测试
 发布：`git tag 0.1.1 && git push --tags`（tag 必须与 manifest.json 的 version 一致，不带 v），
 GitHub Actions 会构建并把三个文件挂到 Release，可用 BRAT 安装。
 
+## 交流
+
+用法问题、建议可以加微信 `JackWeiGogoga`（备注「gogoga」），我拉你进交流群，二维码在[官网交流页](https://obsidian.gogoga.top/community/)。bug 和功能建议请在本仓库的 [Issues](https://github.com/JackWeiGogoga/gogoga-invoice-sync/issues) 里提，附上截图或录屏和版本号。
+
 ## 更新日志
 
 每个版本的变化见 [CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md)（[English](CHANGELOG.md)）。发版前先写好新版本的条目：Release 说明从这里取，没写时发布会失败。
