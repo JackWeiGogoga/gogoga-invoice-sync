@@ -2,6 +2,8 @@
 
 **English** | [简体中文](https://github.com/JackWeiGogoga/gogoga-invoice-sync/blob/main/README.zh-CN.md)
 
+**Website:** [obsidian.gogoga.top](https://obsidian.gogoga.top/en/plugins/gogoga-invoice-sync/) — screenshots, features and downloads.
+
 Sync e-invoices from a dedicated invoice IMAP mailbox (163 Mail by default) into Obsidian notes.
 The plugin parses the national-standard XML of fully digital e-invoices (数电票). When an email has no attachment, it follows the download link in the email body.
 The original PDF, OFD, and XML files are archived in your vault, and the plugin generates an invoice overview table with Bases. Desktop only.

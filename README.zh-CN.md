@@ -2,6 +2,8 @@
 
 [English](https://github.com/JackWeiGogoga/gogoga-invoice-sync/blob/main/README.md) | **简体中文**
 
+**官网：**[obsidian.gogoga.top](https://obsidian.gogoga.top/plugins/gogoga-invoice-sync/)，截图、功能介绍和下载。
+
 把专收发票的 IMAP 邮箱（默认 163 邮箱）里的电子发票同步成 Obsidian 笔记：
 解析数电票国标 XML，邮件里没有附件时跟随正文里的下载链接去拿，
 原始 PDF/OFD/XML 归档进 vault，并生成一张 Bases 发票总表。仅桌面端。
